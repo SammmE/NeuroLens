@@ -18,7 +18,7 @@ export default function SynapseViewPage() {
     <TooltipProvider>
       <div className="min-h-screen bg-background">
         <nav className="sticky top-0 z-50 flex items-center justify-between p-2 space-x-2 bg-card border-b border-border rounded-b-lg shadow-md w-full">
-          <span className="text-lg font-semibold text-primary px-2">SynapseView</span>
+          <span className="text-lg font-semibold text-foreground px-2">SynapseView</span>
           <div className="flex items-center space-x-1">
             <Tooltip>
               <TooltipTrigger asChild>
