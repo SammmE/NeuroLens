@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,37 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, StepForward, RotateCcwIcon } from "lucide-react";
 
-export default function ModelControlsPanel() {
-  const [learningRate, setLearningRate] = useState([0.01]);
-  const [hiddenLayerCount, setHiddenLayerCount] = useState([2]); // Default to 2 layers
-  const [epochs, setEpochs] = useState(100);
+interface ModelControlsPanelProps {
+  epochs: number;
+  setEpochs: (value: number | ((prev: number) => number)) => void;
+  currentEpoch: number;
+  learningRate: number[];
+  setLearningRate: (value: number[] | ((prev: number[]) => number[])) => void;
+  hiddenLayerCount: number[];
+  setHiddenLayerCount: (value: number[] | ((prev: number[]) => number[])) => void;
+  activationFunction: string;
+  setActivationFunction: (value: string | ((prev: string) => string)) => void;
+  onPlay: () => void;
+  onPause: () => void;
+  onStep: () => void;
+  onReset: () => void;
+}
+
+export default function ModelControlsPanel({
+  epochs,
+  setEpochs,
+  currentEpoch,
+  learningRate,
+  setLearningRate,
+  hiddenLayerCount,
+  setHiddenLayerCount,
+  activationFunction,
+  setActivationFunction,
+  onPlay,
+  onPause,
+  onStep,
+  onReset,
+}: ModelControlsPanelProps) {
 
   const handleEpochsInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -22,10 +49,14 @@ export default function ModelControlsPanel() {
     } else {
       const num = parseInt(value, 10);
       if (!isNaN(num)) {
-        const clampedNum = Math.min(Math.max(num, 1), 10000);
+        const clampedNum = Math.min(Math.max(num, 1), 10000); // Max epochs via input
         setEpochs(clampedNum);
       }
     }
+  };
+
+  const handleActivationChange = (value: string) => {
+    setActivationFunction(value);
   };
 
   return (
@@ -61,7 +92,7 @@ export default function ModelControlsPanel() {
 
         <div className="space-y-2">
           <Label htmlFor="activation-function">Activation Function</Label>
-          <Select defaultValue="relu">
+          <Select value={activationFunction} onValueChange={handleActivationChange}>
             <SelectTrigger id="activation-function">
               <SelectValue placeholder="Select function" />
             </SelectTrigger>
@@ -75,40 +106,41 @@ export default function ModelControlsPanel() {
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="epochs">Epochs: {epochs}</Label>
+          <Label htmlFor="epochs-input">Epochs: {epochs}</Label> {/* Changed htmlFor to point to input */}
           <div className="flex items-center gap-x-3">
             <Slider
               id="epochs-slider"
               min={1}
               max={1000} // Slider's practical max for usability
               step={1}
-              value={[Math.min(epochs, 1000)]} // Clamp slider display value to its max
+              value={[Math.min(epochs, 1000)]} 
               onValueChange={(valueArray) => setEpochs(valueArray[0])}
               className="flex-1"
             />
             <Input
-              id="epochs" // Label points here
+              id="epochs-input" // ID for the label
               type="number"
               value={epochs}
               onChange={handleEpochsInputChange}
-              min="1" // HTML5 min
-              max="10000" // HTML5 max, allows higher than slider
-              className="w-24 h-10" // Smaller width, standard height
+              min="1" 
+              max="10000" 
+              className="w-24 h-10" 
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-4">
-          <Button><Play className="mr-2 h-4 w-4" /> Play</Button>
-          <Button variant="outline"><Pause className="mr-2 h-4 w-4" /> Pause</Button>
-          <Button variant="outline"><StepForward className="mr-2 h-4 w-4" /> Step</Button>
-          <Button variant="destructive"><RotateCcwIcon className="mr-2 h-4 w-4" /> Reset</Button>
+          <Button onClick={onPlay}><Play className="mr-2 h-4 w-4" /> Play</Button>
+          <Button variant="outline" onClick={onPause}><Pause className="mr-2 h-4 w-4" /> Pause</Button>
+          <Button variant="outline" onClick={onStep}><StepForward className="mr-2 h-4 w-4" /> Step</Button>
+          <Button variant="destructive" onClick={onReset}><RotateCcwIcon className="mr-2 h-4 w-4" /> Reset</Button>
         </div>
 
         <div className="mt-6 pt-4 border-t border-border space-y-1 text-sm">
-          <p><span className="font-medium text-foreground">Current Epoch:</span> <span className="text-muted-foreground">0 / {epochs}</span></p>
-          <p><span className="font-medium text-foreground">Loss:</span> <span className="text-muted-foreground">0.0000</span></p>
-          <p><span className="font-medium text-foreground">Accuracy:</span> <span className="text-muted-foreground">0.00%</span></p>
+          {/* This display is now somewhat redundant with the navbar, but can be kept for detail */}
+          <p><span className="font-medium text-foreground">Current Epoch:</span> <span className="text-muted-foreground">{currentEpoch} / {epochs}</span></p>
+          <p><span className="font-medium text-foreground">Loss:</span> <span className="text-muted-foreground">N/A</span></p>
+          <p><span className="font-medium text-foreground">Accuracy:</span> <span className="text-muted-foreground">N/A</span></p>
         </div>
       </CardContent>
     </Card>
