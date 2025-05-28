@@ -15,6 +15,23 @@ export default function ModelControlsPanel() {
   const [hiddenLayerCount, setHiddenLayerCount] = useState([2]); // Default to 2 layers
   const [epochs, setEpochs] = useState(100);
 
+  const handleEpochsInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value === "") {
+      // If input is cleared, set to minimum valid value (1 for epochs)
+      setEpochs(1);
+    } else {
+      const num = parseInt(value, 10);
+      if (!isNaN(num)) {
+        // Clamp the number to the allowed range [1, 10000]
+        const clampedNum = Math.min(Math.max(num, 1), 10000);
+        setEpochs(clampedNum);
+      }
+      // If num is NaN (e.g., "abc"), the state 'epochs' won't update here,
+      // and the input field, being controlled, will revert to the last valid 'epochs' value.
+    }
+  };
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -39,7 +56,7 @@ export default function ModelControlsPanel() {
           <Slider
             id="hidden-layers"
             min={1}
-            max={5} 
+            max={5}
             step={1}
             value={hiddenLayerCount}
             onValueChange={setHiddenLayerCount}
@@ -62,14 +79,23 @@ export default function ModelControlsPanel() {
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="epochs">Epochs</Label>
-          <Input 
-            id="epochs" 
-            type="number" 
-            value={epochs} 
-            onChange={(e) => setEpochs(parseInt(e.target.value, 10))} 
-            min="1"
-            max="10000"
+          <Label htmlFor="epochs">Epochs: {epochs}</Label>
+          <Slider
+            id="epochs-slider"
+            min={1}
+            max={1000} // Slider's practical max for usability
+            step={1}
+            value={[epochs]}
+            onValueChange={(valueArray) => setEpochs(valueArray[0])}
+            className="my-2" // Add some vertical margin for spacing
+          />
+          <Input
+            id="epochs" // Label points here
+            type="number"
+            value={epochs}
+            onChange={handleEpochsInputChange}
+            min="1" // HTML5 min
+            max="10000" // HTML5 max, allows higher than slider
           />
         </div>
 
