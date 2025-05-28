@@ -20,6 +20,7 @@ interface ModelControlsPanelProps {
   setHiddenLayerCount: (value: number[] | ((prev: number[]) => number[])) => void;
   activationFunction: string;
   setActivationFunction: (value: string | ((prev: string) => string)) => void;
+  isRunning: boolean;
   onPlay: () => void;
   onPause: () => void;
   onStep: () => void;
@@ -36,6 +37,7 @@ export default function ModelControlsPanel({
   setHiddenLayerCount,
   activationFunction,
   setActivationFunction,
+  isRunning,
   onPlay,
   onPause,
   onStep,
@@ -106,19 +108,19 @@ export default function ModelControlsPanel({
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="epochs-input">Epochs: {epochs}</Label> {/* Changed htmlFor to point to input */}
+          <Label htmlFor="epochs-input">Epochs: {epochs}</Label>
           <div className="flex items-center gap-x-3">
             <Slider
               id="epochs-slider"
               min={1}
-              max={1000} // Slider's practical max for usability
+              max={1000} 
               step={1}
               value={[Math.min(epochs, 1000)]} 
               onValueChange={(valueArray) => setEpochs(valueArray[0])}
               className="flex-1"
             />
             <Input
-              id="epochs-input" // ID for the label
+              id="epochs-input"
               type="number"
               value={epochs}
               onChange={handleEpochsInputChange}
@@ -130,14 +132,16 @@ export default function ModelControlsPanel({
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-4">
-          <Button onClick={onPlay}><Play className="mr-2 h-4 w-4" /> Play</Button>
-          <Button variant="outline" onClick={onPause}><Pause className="mr-2 h-4 w-4" /> Pause</Button>
+          {isRunning ? (
+            <Button variant="outline" onClick={onPause}><Pause className="mr-2 h-4 w-4" /> Pause</Button>
+          ) : (
+            <Button onClick={onPlay}><Play className="mr-2 h-4 w-4" /> Play</Button>
+          )}
           <Button variant="outline" onClick={onStep}><StepForward className="mr-2 h-4 w-4" /> Step</Button>
           <Button variant="destructive" onClick={onReset}><RotateCcwIcon className="mr-2 h-4 w-4" /> Reset</Button>
         </div>
 
         <div className="mt-6 pt-4 border-t border-border space-y-1 text-sm">
-          {/* This display is now somewhat redundant with the navbar, but can be kept for detail */}
           <p><span className="font-medium text-foreground">Current Epoch:</span> <span className="text-muted-foreground">{currentEpoch} / {epochs}</span></p>
           <p><span className="font-medium text-foreground">Loss:</span> <span className="text-muted-foreground">N/A</span></p>
           <p><span className="font-medium text-foreground">Accuracy:</span> <span className="text-muted-foreground">N/A</span></p>

@@ -23,26 +23,33 @@ export default function SynapseViewPage() {
   const [learningRate, setLearningRate] = useState([0.01]);
   const [hiddenLayerCount, setHiddenLayerCount] = useState([2]);
   const [activationFunction, setActivationFunction] = useState("relu");
+  const [isRunning, setIsRunning] = useState(false);
 
-  // Placeholder functions for training controls - to be implemented
   const handlePlay = () => {
-    console.log("Play clicked");
-    // Example: Simulate epoch progression
-    if (currentEpoch < epochs) {
-      setCurrentEpoch(prev => prev + 1);
-    }
+    setIsRunning(true);
+    console.log("Set to RUNNING");
+    // Actual training loop logic would start here based on isRunning state
   };
-  const handlePause = () => console.log("Pause clicked");
+
+  const handlePause = () => {
+    setIsRunning(false);
+    console.log("Set to PAUSED");
+    // Actual training loop logic would pause here
+  };
+
   const handleStep = () => {
     console.log("Step clicked");
      if (currentEpoch < epochs) {
       setCurrentEpoch(prev => prev + 1);
     }
   };
+
   const handleReset = () => {
     console.log("Reset clicked");
     setCurrentEpoch(0);
+    setIsRunning(false); // Also reset running state
   };
+
   const handleLayerStep = () => console.log("Layer step clicked");
 
 
@@ -63,27 +70,29 @@ export default function SynapseViewPage() {
 
           {/* Right: Control Buttons */}
           <div className="flex items-center space-x-1 px-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Play Training" onClick={handlePlay}>
-                  <Play className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Play Training</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Pause Training" onClick={handlePause}>
-                  <Pause className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Pause Training</p>
-              </TooltipContent>
-            </Tooltip>
+            {isRunning ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Pause Training" onClick={handlePause}>
+                    <Pause className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Pause Training</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Play Training" onClick={handlePlay}>
+                    <Play className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Play Training</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -135,6 +144,7 @@ export default function SynapseViewPage() {
               setHiddenLayerCount={setHiddenLayerCount}
               activationFunction={activationFunction}
               setActivationFunction={setActivationFunction}
+              isRunning={isRunning}
               onPlay={handlePlay}
               onPause={handlePause}
               onStep={handleStep}
