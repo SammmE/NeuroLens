@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -17,6 +17,14 @@ import TrainingMetricsPanel from '@/components/synapse-view/TrainingMetricsPanel
 import TrainingDataPanel from '@/components/synapse-view/TrainingDataPanel';
 import ModelControlsPanel from '@/components/synapse-view/ModelControlsPanel';
 
+export type MetricPoint = {
+  time: number;
+  loss: number;
+  accuracy: number;
+};
+
+const initialMetrics: MetricPoint[] = [{ time: 0, loss: 1.0, accuracy: 0.10 }];
+
 export default function SynapseViewPage() {
   const [epochs, setEpochs] = useState(100);
   const [currentEpoch, setCurrentEpoch] = useState(0);
@@ -24,30 +32,106 @@ export default function SynapseViewPage() {
   const [hiddenLayerCount, setHiddenLayerCount] = useState([2]);
   const [activationFunction, setActivationFunction] = useState("relu");
   const [isRunning, setIsRunning] = useState(false);
+  const [trainingMetricsData, setTrainingMetricsData] = useState<MetricPoint[]>(initialMetrics);
+
+  const trainingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const addMetricPoint = useCallback((epoch: number) => {
+    setTrainingMetricsData(prevMetrics => {
+      const lastPoint = prevMetrics[prevMetrics.length - 1] || { loss: 1.0, accuracy: 0.1 };
+      
+      // Simulate plausible trends with some randomness
+      const lossChangeFactor = 0.90 - Math.random() * 0.1; // avg 0.85, range 0.8-0.9
+      let newLoss = lastPoint.loss * lossChangeFactor;
+      
+      const accuracyGainFactor = 0.02 + Math.random() * 0.08; // avg 0.06, range 0.02-0.1
+      let newAccuracy = lastPoint.accuracy + (1 - lastPoint.accuracy) * accuracyGainFactor;
+
+      // Add minor random fluctuations
+      newLoss *= (1 + (Math.random() - 0.5) * 0.05); // +/- 2.5%
+      newAccuracy *= (1 + (Math.random() - 0.5) * 0.05); // +/- 2.5%
+      
+      // Clamp and format
+      newLoss = parseFloat(Math.max(0.001, newLoss).toFixed(4));
+      newAccuracy = parseFloat(Math.min(0.999, Math.max(0, newAccuracy)).toFixed(4));
+
+      return [...prevMetrics, { time: epoch, loss: newLoss, accuracy: newAccuracy }];
+    });
+  }, []);
+
+
+  useEffect(() => {
+    if (trainingIntervalRef.current) {
+      clearInterval(trainingIntervalRef.current);
+      trainingIntervalRef.current = null;
+    }
+
+    if (isRunning && currentEpoch < epochs) {
+      trainingIntervalRef.current = setInterval(() => {
+        setCurrentEpoch(prevEpoch => {
+          if (prevEpoch >= epochs) {
+            setIsRunning(false);
+            if (trainingIntervalRef.current) clearInterval(trainingIntervalRef.current);
+            return prevEpoch;
+          }
+          const newEpochValue = prevEpoch + 1;
+          addMetricPoint(newEpochValue);
+          
+          if (newEpochValue >= epochs) {
+            setIsRunning(false);
+          }
+          return newEpochValue;
+        });
+      }, 500); // Update every 500ms
+    }
+
+    return () => {
+      if (trainingIntervalRef.current) {
+        clearInterval(trainingIntervalRef.current);
+        trainingIntervalRef.current = null;
+      }
+    };
+  }, [isRunning, epochs, currentEpoch, addMetricPoint]);
+
 
   const handlePlay = () => {
     setIsRunning(true);
     console.log("Set to RUNNING");
-    // Actual training loop logic would start here based on isRunning state
+    if (currentEpoch >= epochs && epochs > 0) { // If already at end, reset to play again
+        setCurrentEpoch(0);
+        setTrainingMetricsData(initialMetrics);
+    }
   };
 
   const handlePause = () => {
     setIsRunning(false);
     console.log("Set to PAUSED");
-    // Actual training loop logic would pause here
   };
 
   const handleStep = () => {
     console.log("Step clicked");
-     if (currentEpoch < epochs) {
-      setCurrentEpoch(prev => prev + 1);
+    if (currentEpoch < epochs && !isRunning) {
+      const newEpochValue = currentEpoch + 1;
+      setCurrentEpoch(newEpochValue);
+      addMetricPoint(newEpochValue);
+      if (newEpochValue >= epochs) {
+        setIsRunning(false);
+      }
+    } else if (isRunning) {
+      console.log("Pause training before stepping manually.");
+      // Optionally, you could use a toast notification here
     }
   };
-
+  
   const handleReset = () => {
     console.log("Reset clicked");
+    if (trainingIntervalRef.current) {
+      clearInterval(trainingIntervalRef.current);
+      trainingIntervalRef.current = null;
+    }
+    setIsRunning(false);
     setCurrentEpoch(0);
-    setIsRunning(false); // Also reset running state
+    setTrainingMetricsData(initialMetrics);
   };
 
   const handleLayerStep = () => console.log("Layer step clicked");
@@ -57,10 +141,8 @@ export default function SynapseViewPage() {
     <TooltipProvider>
       <div className="min-h-screen bg-background">
         <nav className="sticky top-0 z-50 flex items-center justify-between p-2 bg-card border-b border-border rounded-b-lg shadow-md w-full h-16">
-          {/* Left: Title */}
           <span className="text-lg font-semibold text-foreground px-2 whitespace-nowrap">SynapseView</span>
 
-          {/* Center: Progress and Epoch Count */}
           <div className="flex flex-col items-center mx-4 flex-grow min-w-0 px-2">
             <Progress value={epochs > 0 ? (currentEpoch / epochs) * 100 : 0} className="w-full max-w-md h-2.5" />
             <span className="text-xs text-muted-foreground mt-1.5">
@@ -68,7 +150,6 @@ export default function SynapseViewPage() {
             </span>
           </div>
 
-          {/* Right: Control Buttons */}
           <div className="flex items-center space-x-1 px-2">
             {isRunning ? (
               <Tooltip>
@@ -96,7 +177,7 @@ export default function SynapseViewPage() {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Step Forward Epoch" onClick={handleStep}>
+                <Button variant="ghost" size="icon" aria-label="Step Forward Epoch" onClick={handleStep} disabled={isRunning}>
                   <StepForward className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
@@ -132,7 +213,7 @@ export default function SynapseViewPage() {
         <main className="px-2 pb-2 md:px-4 md:pb-4 lg:px-6 lg:pb-6 pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <NeuralNetworkPanel />
-            <TrainingMetricsPanel />
+            <TrainingMetricsPanel data={trainingMetricsData} />
             <TrainingDataPanel />
             <ModelControlsPanel
               epochs={epochs}

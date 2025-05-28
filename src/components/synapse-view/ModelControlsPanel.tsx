@@ -47,7 +47,7 @@ export default function ModelControlsPanel({
   const handleEpochsInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value === "") {
-      setEpochs(1);
+      setEpochs(1); // Default to 1 if input is cleared
     } else {
       const num = parseInt(value, 10);
       if (!isNaN(num)) {
@@ -77,6 +77,7 @@ export default function ModelControlsPanel({
             step={0.001}
             value={learningRate}
             onValueChange={setLearningRate}
+            disabled={isRunning}
           />
         </div>
 
@@ -89,12 +90,13 @@ export default function ModelControlsPanel({
             step={1}
             value={hiddenLayerCount}
             onValueChange={setHiddenLayerCount}
+            disabled={isRunning}
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="activation-function">Activation Function</Label>
-          <Select value={activationFunction} onValueChange={handleActivationChange}>
+          <Select value={activationFunction} onValueChange={handleActivationChange} disabled={isRunning}>
             <SelectTrigger id="activation-function">
               <SelectValue placeholder="Select function" />
             </SelectTrigger>
@@ -118,6 +120,7 @@ export default function ModelControlsPanel({
               value={[Math.min(epochs, 1000)]} 
               onValueChange={(valueArray) => setEpochs(valueArray[0])}
               className="flex-1"
+              disabled={isRunning}
             />
             <Input
               id="epochs-input"
@@ -127,24 +130,31 @@ export default function ModelControlsPanel({
               min="1" 
               max="10000" 
               className="w-24 h-10" 
+              disabled={isRunning}
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-4">
           {isRunning ? (
-            <Button variant="outline" onClick={onPause}><Pause className="mr-2 h-4 w-4" /> Pause</Button>
+            <Button variant="outline" onClick={onPause} className="md:col-span-1"><Pause className="mr-2 h-4 w-4" /> Pause</Button>
           ) : (
-            <Button onClick={onPlay}><Play className="mr-2 h-4 w-4" /> Play</Button>
+            <Button onClick={onPlay} className="md:col-span-1"><Play className="mr-2 h-4 w-4" /> Play</Button>
           )}
-          <Button variant="outline" onClick={onStep}><StepForward className="mr-2 h-4 w-4" /> Step</Button>
-          <Button variant="destructive" onClick={onReset}><RotateCcwIcon className="mr-2 h-4 w-4" /> Reset</Button>
+          <Button variant="outline" onClick={onStep} disabled={isRunning} className="md:col-span-1"><StepForward className="mr-2 h-4 w-4" /> Step</Button>
+          <Button variant="destructive" onClick={onReset} className="md:col-span-1"><RotateCcwIcon className="mr-2 h-4 w-4" /> Reset</Button>
         </div>
 
         <div className="mt-6 pt-4 border-t border-border space-y-1 text-sm">
           <p><span className="font-medium text-foreground">Current Epoch:</span> <span className="text-muted-foreground">{currentEpoch} / {epochs}</span></p>
-          <p><span className="font-medium text-foreground">Loss:</span> <span className="text-muted-foreground">N/A</span></p>
-          <p><span className="font-medium text-foreground">Accuracy:</span> <span className="text-muted-foreground">N/A</span></p>
+          <p><span className="font-medium text-foreground">Loss:</span> <span className="text-muted-foreground">
+            {currentEpoch > 0 && trainingMetricsData && trainingMetricsData.length > 1 ? 
+             (trainingMetricsData.find(p => p.time === currentEpoch)?.loss.toFixed(4) ?? 'N/A') : 'N/A'}
+          </span></p>
+          <p><span className="font-medium text-foreground">Accuracy:</span> <span className="text-muted-foreground">
+            {currentEpoch > 0 && trainingMetricsData && trainingMetricsData.length > 1 ? 
+             ((trainingMetricsData.find(p => p.time === currentEpoch)?.accuracy ?? 0) * 100).toFixed(2) + '%' : 'N/A'}
+          </span></p>
         </div>
       </CardContent>
     </Card>

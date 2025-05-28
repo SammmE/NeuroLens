@@ -1,18 +1,13 @@
+
 "use client"
 
+import type { MetricPoint } from "@/app/page"; // Import the MetricPoint type
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import type { ChartConfig } from "@/components/ui/chart";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
-const chartData = [
-  { time: 0, loss: 1.0, accuracy: 0.10 },
-  { time: 1, loss: 0.85, accuracy: 0.25 },
-  { time: 2, loss: 0.65, accuracy: 0.45 },
-  { time: 3, loss: 0.40, accuracy: 0.72 },
-  { time: 4, loss: 0.22, accuracy: 0.88 },
-  { time: 5, loss: 0.10, accuracy: 0.95 },
-];
+// chartData is now passed as a prop
 
 const chartConfig = {
   loss: {
@@ -25,7 +20,11 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export default function TrainingMetricsPanel() {
+interface TrainingMetricsPanelProps {
+  data: MetricPoint[];
+}
+
+export default function TrainingMetricsPanel({ data }: TrainingMetricsPanelProps) {
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -36,7 +35,7 @@ export default function TrainingMetricsPanel() {
         <ChartContainer config={chartConfig} className="w-full h-64 md:h-80">
           <LineChart
             accessibilityLayer
-            data={chartData}
+            data={data} // Use data from props
             margin={{
               top: 5,
               right: 10,
@@ -51,14 +50,17 @@ export default function TrainingMetricsPanel() {
               axisLine={false}
               tickMargin={8}
               tickFormatter={(value) => `Epoch ${value}`}
+              type="number" // Ensure XAxis treats time as a number for proper scaling
+              domain={['dataMin', 'dataMax']} // Allow dynamic domain based on time values
             />
             <YAxis
               yAxisId="left"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              domain={[0, 'dataMax + 0.1']}
+              domain={[0, (dataMax: number) => Math.max(1, (dataMax * 1.1).toFixed(1))]} // Dynamic domain for loss
               tickFormatter={(value) => value.toFixed(2)}
+              allowDataOverflow={false}
             />
             <YAxis
               yAxisId="right"
@@ -68,6 +70,7 @@ export default function TrainingMetricsPanel() {
               tickMargin={8}
               domain={[0, 1]}
               tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+              allowDataOverflow={false}
             />
             <ChartTooltip
               cursor={false}
@@ -82,6 +85,7 @@ export default function TrainingMetricsPanel() {
               dot={false}
               yAxisId="left"
               name="Loss"
+              isAnimationActive={false} // Disable animation for smoother live updates
             />
             <Line
               dataKey="accuracy"
@@ -91,6 +95,7 @@ export default function TrainingMetricsPanel() {
               dot={false}
               yAxisId="right"
               name="Accuracy"
+              isAnimationActive={false} // Disable animation for smoother live updates
             />
           </LineChart>
         </ChartContainer>
