@@ -19,7 +19,7 @@ import ModelControlsPanel from '@/components/synapse-view/ModelControlsPanel';
 
 export default function SynapseViewPage() {
   const [epochs, setEpochs] = useState(100);
-  const [currentEpoch, setCurrentEpoch] = useState(0); // Example: starts at 0
+  const [currentEpoch, setCurrentEpoch] = useState(0);
   const [learningRate, setLearningRate] = useState([0.01]);
   const [hiddenLayerCount, setHiddenLayerCount] = useState([2]);
   const [activationFunction, setActivationFunction] = useState("relu");
@@ -49,13 +49,13 @@ export default function SynapseViewPage() {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background">
-        <nav className="sticky top-0 z-50 flex items-center justify-between p-2 bg-card border-b border-border rounded-b-lg shadow-md w-full h-16"> {/* Increased height slightly */}
+        <nav className="sticky top-0 z-50 flex items-center justify-between p-2 bg-card border-b border-border rounded-b-lg shadow-md w-full h-16">
           {/* Left: Title */}
           <span className="text-lg font-semibold text-foreground px-2 whitespace-nowrap">SynapseView</span>
 
           {/* Center: Progress and Epoch Count */}
-          <div className="flex flex-col items-center mx-4 flex-grow min-w-0 px-2"> {/* min-w-0 for flex item shrink */}
-            <Progress value={epochs > 0 ? (currentEpoch / epochs) * 100 : 0} className="w-full max-w-md h-2.5" /> {/* max-w-md, h-2.5 */}
+          <div className="flex flex-col items-center mx-4 flex-grow min-w-0 px-2">
+            <Progress value={epochs > 0 ? (currentEpoch / epochs) * 100 : 0} className="w-full max-w-md h-2.5" />
             <span className="text-xs text-muted-foreground mt-1.5">
               Epoch: {currentEpoch} / {epochs}
             </span>
@@ -120,7 +120,7 @@ export default function SynapseViewPage() {
           </div>
         </nav>
   
-        <main className="p-4 md:p-6 lg:p-8 pt-[calc(theme(spacing.4)_+_64px)] md:pt-[calc(theme(spacing.6)_+_64px)] lg:pt-[calc(theme(spacing.8)_+_64px)]"> {/* Adjusted top padding for 64px navbar height */}
+        <main className="p-4 md:p-6 lg:p-8 pt-[calc(theme(spacing.4)_+_64px)] md:pt-[calc(theme(spacing.6)_+_64px)] lg:pt-[calc(theme(spacing.8)_+_64px)]">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <NeuralNetworkPanel />
             <TrainingMetricsPanel />
@@ -129,7 +129,6 @@ export default function SynapseViewPage() {
               epochs={epochs}
               setEpochs={setEpochs}
               currentEpoch={currentEpoch}
-              // setCurrentEpoch={setCurrentEpoch} // Pass if ModelControlsPanel needs to directly set it
               learningRate={learningRate}
               setLearningRate={setLearningRate}
               hiddenLayerCount={hiddenLayerCount}
