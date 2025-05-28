@@ -120,7 +120,7 @@ export default function SynapseViewPage() {
           </div>
         </nav>
   
-        <main className="px-4 pb-4 md:px-6 md:pb-6 lg:px-8 lg:pb-8 pt-16">
+        <main className="px-2 pb-2 md:px-4 md:pb-4 lg:px-6 lg:pb-6 pt-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <NeuralNetworkPanel />
             <TrainingMetricsPanel />
