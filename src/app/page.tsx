@@ -120,7 +120,7 @@ export default function SynapseViewPage() {
           </div>
         </nav>
   
-        <main className="p-4 md:p-6 lg:p-8 pt-[calc(theme(spacing.4)_+_64px)] md:pt-[calc(theme(spacing.6)_+_64px)] lg:pt-[calc(theme(spacing.8)_+_64px)]">
+        <main className="px-4 pb-4 md:px-6 md:pb-6 lg:px-8 lg:pb-8 pt-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <NeuralNetworkPanel />
             <TrainingMetricsPanel />
