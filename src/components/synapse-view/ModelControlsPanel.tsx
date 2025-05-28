@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState } from 'react';
@@ -11,6 +12,7 @@ import { Play, Pause, StepForward, RotateCcwIcon } from "lucide-react";
 
 export default function ModelControlsPanel() {
   const [learningRate, setLearningRate] = useState([0.01]);
+  const [hiddenLayerCount, setHiddenLayerCount] = useState([2]); // Default to 2 layers
   const [epochs, setEpochs] = useState(100);
 
   return (
@@ -33,18 +35,15 @@ export default function ModelControlsPanel() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="hidden-layers">Number of Hidden Layers</Label>
-          <Select defaultValue="2">
-            <SelectTrigger id="hidden-layers">
-              <SelectValue placeholder="Select layers" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">1 Hidden Layer</SelectItem>
-              <SelectItem value="2">2 Hidden Layers</SelectItem>
-              <SelectItem value="3">3 Hidden Layers</SelectItem>
-              <SelectItem value="4">4 Hidden Layers</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label htmlFor="hidden-layers">Number of Hidden Layers: {hiddenLayerCount[0]}</Label>
+          <Slider
+            id="hidden-layers"
+            min={1}
+            max={5} 
+            step={1}
+            value={hiddenLayerCount}
+            onValueChange={setHiddenLayerCount}
+          />
         </div>
 
         <div className="space-y-2">
