@@ -95,11 +95,12 @@ export class Model {
 	private trainingPaused: boolean = false;
 	private currentTrainingEpoch: number = 0;
 	private currentSampleIndex: number = 0;
-	private currentTrainingPhase: 'forward' | 'backward' = 'forward';
+	private currentTrainingPhase: "forward" | "backward" = "forward";
 	private epochPredictions: number[][] = [];
 	private epochTargets: number[][] = [];
 	private cumulativeEpochLoss: number = 0;
-	private shuffledTrainingData: Array<{ inputs: number[]; targets: number[] }> = [];
+	private shuffledTrainingData: Array<{ inputs: number[]; targets: number[] }> =
+		[];
 
 	constructor(
 		layersConfig: number[][],
@@ -120,7 +121,7 @@ export class Model {
 		this.outputLayers = outputColumnIndices;
 		this.callbacks = callbacks || [];
 
-		console.log(this.layers)
+		console.log(this.layers);
 
 		if (layersConfig.length === 0) {
 			throw new Error("layersConfig cannot be empty for model creation.");
@@ -266,14 +267,14 @@ export class Model {
 	}[] {
 		return this.network.map((layer, layerIndex) => ({
 			layerIndex,
-			neurons: layer.map(neuron => ({
+			neurons: layer.map((neuron) => ({
 				weights: [...neuron.weights],
 				bias: neuron.bias,
 				inputs: [...neuron.inputs],
 				z: neuron.z,
 				output: neuron.output,
-				delta: neuron.delta
-			}))
+				delta: neuron.delta,
+			})),
 		}));
 	}
 
@@ -288,14 +289,19 @@ export class Model {
 		totalEpochs: number;
 		totalSamples: number;
 		totalLayers: number;
-		phase: 'forward' | 'backward';
+		phase: "forward" | "backward";
 		progressPercentage: number;
 	} {
-		const totalSamples = this.shuffledTrainingData.length || this.trainingData.length;
-		const totalSteps = this.total_epochs * totalSamples * this.network.length * 2; // forward + backward
-		const currentStep = (this.currentTrainingEpoch * totalSamples * this.network.length * 2) +
-			(this.currentSampleIndex * this.network.length * 2) +
-			(this.currentTrainingPhase === 'forward' ? this.onLayer : this.network.length + (this.network.length - 1 - this.onLayer));
+		const totalSamples =
+			this.shuffledTrainingData.length || this.trainingData.length;
+		const totalSteps =
+			this.total_epochs * totalSamples * this.network.length * 2; // forward + backward
+		const currentStep =
+			this.currentTrainingEpoch * totalSamples * this.network.length * 2 +
+			this.currentSampleIndex * this.network.length * 2 +
+			(this.currentTrainingPhase === "forward"
+				? this.onLayer
+				: this.network.length + (this.network.length - 1 - this.onLayer));
 
 		return {
 			trainingInProgress: this.trainingInProgress,
@@ -306,7 +312,7 @@ export class Model {
 			totalSamples,
 			totalLayers: this.network.length,
 			phase: this.currentTrainingPhase,
-			progressPercentage: Math.min(100, (currentStep / totalSteps) * 100)
+			progressPercentage: Math.min(100, (currentStep / totalSteps) * 100),
 		};
 	}
 
@@ -315,7 +321,7 @@ export class Model {
 		this.trainingPaused = false;
 		this.currentTrainingEpoch = 0;
 		this.currentSampleIndex = 0;
-		this.currentTrainingPhase = 'forward';
+		this.currentTrainingPhase = "forward";
 		this.epochPredictions = [];
 		this.epochTargets = [];
 		this.cumulativeEpochLoss = 0;
@@ -347,7 +353,9 @@ export class Model {
 			case "linear":
 				return z;
 			default:
-				throw new Error(`Unsupported activation function: ${this.activationFunction}`);
+				throw new Error(
+					`Unsupported activation function: ${this.activationFunction}`,
+				);
 		}
 	}
 
@@ -360,7 +368,7 @@ export class Model {
 	public singleNeuronPass(neuron: Neuron, inputs: number[]): number {
 		if (inputs.length !== neuron.weights.length) {
 			throw new Error(
-				`Input size mismatch: neuron expects ${neuron.weights.length} inputs, got ${inputs.length}`
+				`Input size mismatch: neuron expects ${neuron.weights.length} inputs, got ${inputs.length}`,
 			);
 		}
 
@@ -410,7 +418,7 @@ export class Model {
 	public forwardPass(inputs: number[]): number[] {
 		if (inputs.length !== this.numInputFeatures) {
 			throw new Error(
-				`Input size mismatch: network expects ${this.numInputFeatures} inputs, got ${inputs.length}`
+				`Input size mismatch: network expects ${this.numInputFeatures} inputs, got ${inputs.length}`,
 			);
 		}
 
@@ -432,16 +440,20 @@ export class Model {
 		switch (this.activationFunction) {
 			case "relu":
 				return z > 0 ? 1 : 0;
-			case "sigmoid":
+			case "sigmoid": {
 				const sigmoid = 1 / (1 + Math.exp(-z));
 				return sigmoid * (1 - sigmoid);
-			case "tanh":
+			}
+			case "tanh": {
 				const tanh = Math.tanh(z);
 				return 1 - tanh * tanh;
+			}
 			case "linear":
 				return 1;
 			default:
-				throw new Error(`Unsupported activation function: ${this.activationFunction}`);
+				throw new Error(
+					`Unsupported activation function: ${this.activationFunction}`,
+				);
 		}
 	}
 
@@ -477,8 +489,10 @@ export class Model {
 		this.shuffledTrainingData = [...this.trainingData];
 		for (let i = this.shuffledTrainingData.length - 1; i > 0; i--) {
 			const j = Math.floor(Math.random() * (i + 1));
-			[this.shuffledTrainingData[i], this.shuffledTrainingData[j]] =
-				[this.shuffledTrainingData[j], this.shuffledTrainingData[i]];
+			[this.shuffledTrainingData[i], this.shuffledTrainingData[j]] = [
+				this.shuffledTrainingData[j],
+				this.shuffledTrainingData[i],
+			];
 		}
 	}
 
@@ -493,7 +507,7 @@ export class Model {
 		currentEpoch: number;
 		currentSample: number;
 		currentLayer: number;
-		phase: 'forward' | 'backward' | 'epoch_complete';
+		phase: "forward" | "backward" | "epoch_complete";
 		loss?: number;
 		accuracy?: number;
 	} {
@@ -505,7 +519,7 @@ export class Model {
 				currentEpoch: this.currentTrainingEpoch,
 				currentSample: this.currentSampleIndex,
 				currentLayer: this.onLayer,
-				phase: this.currentTrainingPhase
+				phase: this.currentTrainingPhase,
 			};
 		}
 
@@ -518,7 +532,7 @@ export class Model {
 			this.trainingPaused = false;
 			this.currentTrainingEpoch = 0;
 			this.currentSampleIndex = 0;
-			this.currentTrainingPhase = 'forward';
+			this.currentTrainingPhase = "forward";
 			this.onLayer = 0;
 			this.epochPredictions = [];
 			this.epochTargets = [];
@@ -535,14 +549,14 @@ export class Model {
 				currentEpoch: this.currentTrainingEpoch,
 				currentSample: this.currentSampleIndex,
 				currentLayer: this.onLayer,
-				phase: 'epoch_complete'
+				phase: "epoch_complete",
 			};
 		}
 
 		const currentSample = this.shuffledTrainingData[this.currentSampleIndex];
 
 		// Forward pass phase - process layer by layer
-		if (this.currentTrainingPhase === 'forward') {
+		if (this.currentTrainingPhase === "forward") {
 			if (this.onLayer === 0) {
 				// First layer - use input data
 				this.previousLayerResults = currentSample.inputs;
@@ -550,7 +564,10 @@ export class Model {
 
 			// Process current layer
 			const currentLayer = this.network[this.onLayer];
-			this.currentLayerOutputsForStep = this.layerPass(currentLayer, this.previousLayerResults);
+			this.currentLayerOutputsForStep = this.layerPass(
+				currentLayer,
+				this.previousLayerResults,
+			);
 
 			// Move to next layer
 			this.onLayer++;
@@ -566,11 +583,14 @@ export class Model {
 				this.epochTargets.push([...currentSample.targets]);
 
 				// Calculate loss for this sample
-				const sampleLoss = this.calculateLoss(this.currentLayerOutputsForStep, currentSample.targets);
+				const sampleLoss = this.calculateLoss(
+					this.currentLayerOutputsForStep,
+					currentSample.targets,
+				);
 				this.cumulativeEpochLoss += sampleLoss;
 
 				// Switch to backward phase
-				this.currentTrainingPhase = 'backward';
+				this.currentTrainingPhase = "backward";
 				this.onLayer = this.network.length - 1; // Start from last layer
 			}
 
@@ -580,12 +600,12 @@ export class Model {
 				currentEpoch: this.currentTrainingEpoch,
 				currentSample: this.currentSampleIndex,
 				currentLayer: this.onLayer - 1,
-				phase: 'forward'
+				phase: "forward",
 			};
 		}
 
 		// Backward pass phase - backpropagation layer by layer
-		if (this.currentTrainingPhase === 'backward') {
+		if (this.currentTrainingPhase === "backward") {
 			const currentLayer = this.network[this.onLayer];
 
 			if (this.onLayer === this.network.length - 1) {
@@ -621,7 +641,8 @@ export class Model {
 
 				// Update weights using gradient descent
 				for (let i = 0; i < neuron.weights.length; i++) {
-					neuron.weights[i] -= this.learningRate * neuron.delta * neuron.inputs[i];
+					neuron.weights[i] -=
+						this.learningRate * neuron.delta * neuron.inputs[i];
 				}
 				// Update bias using gradient descent
 				neuron.bias -= this.learningRate * neuron.delta;
@@ -644,17 +665,21 @@ export class Model {
 				// Move to next sample
 				this.currentSampleIndex++;
 				this.onLayer = 0;
-				this.currentTrainingPhase = 'forward';
+				this.currentTrainingPhase = "forward";
 
 				// Check if epoch is complete
 				if (this.currentSampleIndex >= this.shuffledTrainingData.length) {
 					// Calculate epoch metrics
-					const epochLoss = this.cumulativeEpochLoss / this.shuffledTrainingData.length;
+					const epochLoss =
+						this.cumulativeEpochLoss / this.shuffledTrainingData.length;
 
 					// Calculate epoch accuracy
 					let totalAccuracy = 0;
 					for (let i = 0; i < this.epochPredictions.length; i++) {
-						totalAccuracy += this.calculateAccuracy(this.epochPredictions[i], this.epochTargets[i]);
+						totalAccuracy += this.calculateAccuracy(
+							this.epochPredictions[i],
+							this.epochTargets[i],
+						);
 					}
 					const epochAccuracy = totalAccuracy / this.epochPredictions.length;
 
@@ -683,9 +708,9 @@ export class Model {
 						currentEpoch: this.currentTrainingEpoch - 1,
 						currentSample: this.currentSampleIndex,
 						currentLayer: this.onLayer,
-						phase: 'epoch_complete',
+						phase: "epoch_complete",
 						loss: epochLoss,
-						accuracy: epochAccuracy
+						accuracy: epochAccuracy,
 					};
 				}
 			}
@@ -696,7 +721,7 @@ export class Model {
 				currentEpoch: this.currentTrainingEpoch,
 				currentSample: this.currentSampleIndex,
 				currentLayer: this.onLayer + 1,
-				phase: 'backward'
+				phase: "backward",
 			};
 		}
 

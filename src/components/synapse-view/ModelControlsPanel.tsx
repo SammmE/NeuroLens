@@ -76,12 +76,15 @@ const ModelControlsInnerContent = ({
     };
 
     const handleNeuronCountChange = (index: number, value: string) => {
-        const numValue = parseInt(value, 4);
-        const newNeuronCounts = neuronCounts.map((count, i) =>
-            i === index ? Math.max(numValue, 1) : count
-        );
-        setNeuronCounts(newNeuronCounts);
-        AppState.getInstance().setHiddenLayerNeurons(newNeuronCounts);
+        // Ensure the value is a valid number and within bounds
+        const numValue = parseInt(value, 10);
+        if (!Number.isNaN(numValue) && numValue > 0) {
+            const newNeuronCounts = [...neuronCounts];
+            newNeuronCounts[index] = numValue;
+            setNeuronCounts(newNeuronCounts);
+            AppState.getInstance().setHiddenLayerNeurons(newNeuronCounts);
+        }
+
     };
 
     return (
