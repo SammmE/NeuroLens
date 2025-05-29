@@ -277,7 +277,7 @@ const NeuralNetworkVisualizer: FC<NeuralNetworkVisualizerProps> = ({
             ctx.fillText(`Weighted Sum = ${sumString} + ${biasStr} = ${calculatedWeightedSum.toFixed(2)}`, width / 2, equationY);
             equationY += lineSpacing;
 
-            const outputStr = Number.isFinite(neuronData.output) ? neuronData.output.toFixed(2) : (neuronData.output === Infinity ? '+Infinity' : String(neuronData.output));
+            const outputStr = Number.isFinite(neuronData.output) ? neuronData.output.toFixed(2) : String(neuronData.output);
             ctx.fillText(`Final Output (Activation): ${outputStr}`, width / 2, equationY);
 
         } else {
@@ -300,7 +300,7 @@ const NeuralNetworkVisualizer: FC<NeuralNetworkVisualizerProps> = ({
                     const targetPos = neuronPositions[l][n];
 
                     const numIncomingConnections = Math.min(neuron.weights?.length || 0, prevLayerNeurons.length);
-                    const isTargetOutputFinite = Number.isFinite(neuron.output);
+                    const isGrey = neuron.output === 0.0;
 
                     if (neuron.weights) {
                         for (let k = 0; k < neuron.weights.length; k++) {
@@ -314,10 +314,10 @@ const NeuralNetworkVisualizer: FC<NeuralNetworkVisualizerProps> = ({
                                 const targetEdgeX = targetPos.x - neuronRadius * Math.cos(angle);
                                 const targetEdgeY = targetPos.y - neuronRadius * Math.sin(angle);
 
-                                if (isTargetOutputFinite) {
-                                    ctx.strokeStyle = 'skyblue';
-                                } else {
+                                if (isGrey) {
                                     ctx.strokeStyle = '#555';
+                                } else {
+                                    ctx.strokeStyle = 'skyblue';
                                 }
 
                                 ctx.beginPath();

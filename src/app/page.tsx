@@ -62,15 +62,15 @@ export default function SynapseViewPage() {
     const updateMetricsFromModel = useCallback(() => {
         const appState = AppState.getInstance();
         const model = appState.getModel();
-        
+
         if (model) {
             const lossHistory = model.getLossHistory();
             const accuracyHistory = model.getAccuracyHistory();
             const currentEpochs = model.getEpochsCompleted();
-            
+
             // Update current epoch
             setCurrentEpoch(currentEpochs);
-            
+
             // Convert model data to MetricPoint format
             const newMetrics: MetricPoint[] = [];
             for (let i = 0; i < Math.max(lossHistory.length, accuracyHistory.length); i++) {
@@ -80,7 +80,7 @@ export default function SynapseViewPage() {
                     accuracy: accuracyHistory[i] || 0
                 });
             }
-            
+
             // If we have new data, update the metrics
             if (newMetrics.length > 0) {
                 setTrainingMetricsData(newMetrics);
@@ -91,12 +91,12 @@ export default function SynapseViewPage() {
     // Register callback to update metrics when model changes
     useEffect(() => {
         const appState = AppState.getInstance();
-        
+
         // Register for model updates
         appState.registerModelCallback(() => {
             updateMetricsFromModel();
         });
-        
+
         // Initial update
         updateMetricsFromModel();
     }, [updateMetricsFromModel]);
@@ -116,14 +116,14 @@ export default function SynapseViewPage() {
         if (isRunning) {
             trainingIntervalRef.current = setInterval(() => {
                 const appState = AppState.getInstance();
-                
+
                 // Check if training is paused
                 if (appState.isTrainingPaused()) {
                     return; // Skip this tick if paused
                 }
-                
+
                 const result = appState.train(); // Use the actual training method
-                
+
                 if (result) {
                     // Training completed
                     setIsRunning(false);
@@ -132,10 +132,10 @@ export default function SynapseViewPage() {
                         trainingIntervalRef.current = null;
                     }
                 }
-                
+
                 // Update metrics after each training step
                 updateMetricsFromModel();
-            }, 100); // Faster interval for more responsive updates
+            }, 300); // Faster interval for more responsive updates
         }
 
         return () => {
@@ -164,14 +164,14 @@ export default function SynapseViewPage() {
             // Ensure training is not paused for single step
             appState.resumeTraining();
             const result = appState.train(); // Single training step
-            
+
             // Update metrics after the step
             updateMetricsFromModel();
-            
+
             if (result) {
                 console.log("Training completed!");
             }
-            
+
             // Pause after single step to prevent auto-continue
             appState.pauseTraining();
         }
@@ -183,21 +183,21 @@ export default function SynapseViewPage() {
             trainingIntervalRef.current = null;
         }
         setIsRunning(false);
-        
+
         // Reset the actual model
         const appState = AppState.getInstance();
         const model = appState.getModel();
         if (model) {
             model.reset();
         }
-        
+
         setCurrentEpoch(0);
         setEpochs(100); // Reset epochs to default or chosen initial value
         setLearningRate([0.01]);
         setHiddenLayerCount([2]);
         setActivationFunction("relu");
         setTrainingMetricsData(initialMetrics);
-        
+
         // Update metrics from reset model
         updateMetricsFromModel();
     };
@@ -205,10 +205,10 @@ export default function SynapseViewPage() {
     const handleLayerStep = () => {
         const appState = AppState.getInstance();
         const isFinished = appState.train(); // This calls trainTickLayer
-        
+
         // Update metrics after the layer step
         updateMetricsFromModel();
-        
+
         if (isFinished) {
             console.log("Training completed!");
         }
