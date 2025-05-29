@@ -24,8 +24,8 @@ const TrainingDataInnerContent = ({ isModal = false }: { isModal?: boolean }) =>
         </TabsList>
         <TabsContent value="upload">
           <div className="space-y-4">
-            <Label htmlFor="csv-file-modal">Upload CSV File</Label>
-            <Input id="csv-file-modal" type="file" accept=".csv" />
+            <Label htmlFor={`csv-file-${isModal ? 'modal' : 'card'}`}>Upload CSV File</Label>
+            <Input id={`csv-file-${isModal ? 'modal' : 'card'}`} type="file" accept=".csv" />
             <Button className="w-full"><UploadCloud className="mr-2 h-4 w-4" />Upload and Visualize</Button>
           </div>
         </TabsContent>
@@ -46,9 +46,9 @@ const TrainingDataInnerContent = ({ isModal = false }: { isModal?: boolean }) =>
         </TabsContent>
         <TabsContent value="preset">
           <div className="space-y-4">
-            <Label htmlFor="preset-dataset-modal">Choose a Preset Dataset</Label>
+            <Label htmlFor={`preset-dataset-${isModal ? 'modal' : 'card'}`}>Choose a Preset Dataset</Label>
             <Select defaultValue="spirals">
-              <SelectTrigger id="preset-dataset-modal">
+              <SelectTrigger id={`preset-dataset-${isModal ? 'modal' : 'card'}`}>
                 <SelectValue placeholder="Select dataset" />
               </SelectTrigger>
               <SelectContent>
@@ -86,19 +86,19 @@ export default function TrainingDataPanel() {
               <CardTitle>Training Data</CardTitle>
               <CardDescription>Manage and visualize your input dataset.</CardDescription>
             </div>
-            <DialogTrigger asChild>
-              <Tooltip>
-                <TooltipTrigger asChild>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="ml-auto flex-shrink-0">
                     <Expand className="h-5 w-5" />
                     <span className="sr-only">View Fullscreen</span>
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>View Fullscreen</p>
-                </TooltipContent>
-              </Tooltip>
-            </DialogTrigger>
+                </DialogTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View Fullscreen</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </CardHeader>
         <CardContent>

@@ -109,19 +109,19 @@ export default function TrainingMetricsPanel({ data }: TrainingMetricsPanelProps
               <CardTitle>Training Metrics</CardTitle>
               <CardDescription>Loss and accuracy progression over training epochs.</CardDescription>
             </div>
-            <DialogTrigger asChild>
-              <Tooltip>
-                <TooltipTrigger asChild>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="ml-auto flex-shrink-0">
                     <Expand className="h-5 w-5" />
                     <span className="sr-only">View Fullscreen</span>
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>View Fullscreen</p>
-                </TooltipContent>
-              </Tooltip>
-            </DialogTrigger>
+                </DialogTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View Fullscreen</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </CardHeader>
         <CardContent>

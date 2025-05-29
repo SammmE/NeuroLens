@@ -44,19 +44,19 @@ export default function NeuralNetworkPanel() {
               <CardTitle>Neural Network</CardTitle>
               <CardDescription>Live visualization of the network structure and activations.</CardDescription>
             </div>
-            <DialogTrigger asChild>
-              <Tooltip>
-                <TooltipTrigger asChild>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="ml-auto flex-shrink-0">
                     <Expand className="h-5 w-5" />
                     <span className="sr-only">View Fullscreen</span>
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>View Fullscreen</p>
-                </TooltipContent>
-              </Tooltip>
-            </DialogTrigger>
+                </DialogTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View Fullscreen</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </CardHeader>
         <CardContent>
