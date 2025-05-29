@@ -21,7 +21,7 @@ import {
     TooltipContent,
 } from "@/components/ui/tooltip";
 import { Expand } from "lucide-react";
-import { Neuron } from "@/lib/model";
+import { Neuron, Model } from "@/lib/model";
 import NeuralNetworkVisualizer from "../NeuralNetworkVisualizer";
 import { AppState } from "@/lib/AppState";
 import React from "react";
@@ -44,14 +44,37 @@ const NeuralNetworkContent = ({
     width: number;
     height: number;
 }) => {
-    const [network, setNetwork] = React.useState<Neuron[][]>(AppState.getInstance().getModel()?.getNetwork() || []);
+    const [network, setNetwork] = React.useState<Neuron[][]>(() => {
+        const currentModel = AppState.getInstance().getModel();
+        return currentModel?.getNetwork() || [];
+    });
+    const [updateCounter, setUpdateCounter] = React.useState(0);
 
     React.useEffect(() => {
-        AppState.getInstance().registerModelCallback((model) => {
+        const appState = AppState.getInstance();
+        
+        // Register callback to update network when model changes
+        const updateCallback = (model: Model) => {
             console.log("Model updated, updating network visualization");
-            setNetwork(model.getNetwork());
-        });
+            const newNetwork = model.getNetwork();
+            console.log("New network structure:", newNetwork);
+            setNetwork([...newNetwork]); // Create a new array reference to force re-render
+            setUpdateCounter(prev => prev + 1); // Force update counter to trigger re-render
+        };
+        
+        appState.registerModelCallback(updateCallback);
+        
+        // Initial update in case model already exists
+        const currentModel = appState.getModel();
+        if (currentModel) {
+            updateCallback(currentModel);
+        }
+        
+        // No cleanup needed as callbacks are stored in AppState singleton
     }, []);
+
+    // Add a key to force NeuralNetworkVisualizer to re-render when network changes
+    const networkKey = `network-${updateCounter}-${network.length}-${network.map(layer => layer.length).join('-')}`;
 
     return (
         <div>
@@ -59,7 +82,12 @@ const NeuralNetworkContent = ({
                 network.length === 0 ? (
                     <div>Upload some data or use sample data!</div>
                 ) : (
-                    <NeuralNetworkVisualizer layers={network} width={width} height={height} />
+                    <NeuralNetworkVisualizer 
+                        key={networkKey}
+                        layers={network} 
+                        width={width} 
+                        height={height} 
+                    />
                 )
             }
         </div>

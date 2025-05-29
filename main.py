@@ -1,18 +1,12 @@
-import pandas as pd
+import csv
+import math
 
-data = pd.read_csv("sample.csv")
+NUM_ROWS = 20  # You can change this value as needed
 
-# add a new column with the number of the column
-data["day"] = range(1, len(data) + 1)
-
-# drop the date column
-data = data.drop(columns=["Date"])
-
-# make the day column the index
-data = data.set_index("day")
-
-# make the day column the first column
-data = data.reset_index()
-
-# save the modified data to a new csv file
-data.to_csv("sample.csv", index=False)
+with open('sin.csv', mode='w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['x', 'y'])
+    for i in range(NUM_ROWS):
+        x = i * (2 * math.pi) / (NUM_ROWS - 1)
+        y = math.sin(x)
+        writer.writerow([x, y])

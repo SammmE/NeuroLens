@@ -58,34 +58,54 @@ export default function SynapseViewPage() {
 
     const trainingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const addMetricPoint = useCallback((epoch: number) => {
-        setTrainingMetricsData((prevMetrics) => {
-            const lastPoint = prevMetrics[prevMetrics.length - 1] || {
-                loss: 1.0,
-                accuracy: 0.1,
-            };
-
-            const lossChangeFactor = 0.9 - Math.random() * 0.1;
-            let newLoss = lastPoint.loss * lossChangeFactor;
-
-            const accuracyGainFactor = 0.02 + Math.random() * 0.08;
-            let newAccuracy =
-                lastPoint.accuracy + (1 - lastPoint.accuracy) * accuracyGainFactor;
-
-            newLoss *= 1 + (Math.random() - 0.5) * 0.05;
-            newAccuracy *= 1 + (Math.random() - 0.5) * 0.05;
-
-            newLoss = parseFloat(Math.max(0.001, newLoss).toFixed(4));
-            newAccuracy = parseFloat(
-                Math.min(0.999, Math.max(0, newAccuracy)).toFixed(4),
-            );
-
-            return [
-                ...prevMetrics,
-                { time: epoch, loss: newLoss, accuracy: newAccuracy },
-            ];
-        });
+    // Update metrics from the actual model
+    const updateMetricsFromModel = useCallback(() => {
+        const appState = AppState.getInstance();
+        const model = appState.getModel();
+        
+        if (model) {
+            const lossHistory = model.getLossHistory();
+            const accuracyHistory = model.getAccuracyHistory();
+            const currentEpochs = model.getEpochsCompleted();
+            
+            // Update current epoch
+            setCurrentEpoch(currentEpochs);
+            
+            // Convert model data to MetricPoint format
+            const newMetrics: MetricPoint[] = [];
+            for (let i = 0; i < Math.max(lossHistory.length, accuracyHistory.length); i++) {
+                newMetrics.push({
+                    time: i + 1, // Epochs are 1-indexed for display
+                    loss: lossHistory[i] || 0,
+                    accuracy: accuracyHistory[i] || 0
+                });
+            }
+            
+            // If we have new data, update the metrics
+            if (newMetrics.length > 0) {
+                setTrainingMetricsData(newMetrics);
+            }
+        }
     }, []);
+
+    // Register callback to update metrics when model changes
+    useEffect(() => {
+        const appState = AppState.getInstance();
+        
+        // Register for model updates
+        appState.registerModelCallback(() => {
+            updateMetricsFromModel();
+        });
+        
+        // Initial update
+        updateMetricsFromModel();
+    }, [updateMetricsFromModel]);
+
+    const addMetricPoint = useCallback((epoch: number) => {
+        // This function is now deprecated in favor of updateMetricsFromModel
+        // but keeping it for compatibility with existing timer-based logic
+        updateMetricsFromModel();
+    }, [updateMetricsFromModel]);
 
     useEffect(() => {
         if (trainingIntervalRef.current) {
@@ -93,24 +113,29 @@ export default function SynapseViewPage() {
             trainingIntervalRef.current = null;
         }
 
-        if (isRunning && currentEpoch < epochs) {
+        if (isRunning) {
             trainingIntervalRef.current = setInterval(() => {
-                setCurrentEpoch((prevEpoch) => {
-                    if (prevEpoch >= epochs) {
-                        setIsRunning(false);
-                        if (trainingIntervalRef.current)
-                            clearInterval(trainingIntervalRef.current);
-                        return prevEpoch;
+                const appState = AppState.getInstance();
+                
+                // Check if training is paused
+                if (appState.isTrainingPaused()) {
+                    return; // Skip this tick if paused
+                }
+                
+                const result = appState.train(); // Use the actual training method
+                
+                if (result) {
+                    // Training completed
+                    setIsRunning(false);
+                    if (trainingIntervalRef.current) {
+                        clearInterval(trainingIntervalRef.current);
+                        trainingIntervalRef.current = null;
                     }
-                    const newEpochValue = prevEpoch + 1;
-                    addMetricPoint(newEpochValue);
-
-                    if (newEpochValue >= epochs) {
-                        setIsRunning(false);
-                    }
-                    return newEpochValue;
-                });
-            }, 500);
+                }
+                
+                // Update metrics after each training step
+                updateMetricsFromModel();
+            }, 100); // Faster interval for more responsive updates
         }
 
         return () => {
@@ -119,25 +144,36 @@ export default function SynapseViewPage() {
                 trainingIntervalRef.current = null;
             }
         };
-    }, [isRunning, epochs, currentEpoch, addMetricPoint]);
+    }, [isRunning, updateMetricsFromModel]);
 
     const handlePlay = () => {
-        AppState.getInstance().train();
+        const appState = AppState.getInstance();
+        appState.resumeTraining();
         setIsRunning(true);
     };
 
     const handlePause = () => {
+        const appState = AppState.getInstance();
+        appState.pauseTraining();
         setIsRunning(false);
     };
 
     const handleStep = () => {
-        if (currentEpoch < epochs && !isRunning) {
-            const newEpochValue = currentEpoch + 1;
-            setCurrentEpoch(newEpochValue);
-            addMetricPoint(newEpochValue);
-            if (newEpochValue >= epochs) {
-                setIsRunning(false);
+        if (!isRunning) {
+            const appState = AppState.getInstance();
+            // Ensure training is not paused for single step
+            appState.resumeTraining();
+            const result = appState.train(); // Single training step
+            
+            // Update metrics after the step
+            updateMetricsFromModel();
+            
+            if (result) {
+                console.log("Training completed!");
             }
+            
+            // Pause after single step to prevent auto-continue
+            appState.pauseTraining();
         }
     };
 
@@ -147,15 +183,36 @@ export default function SynapseViewPage() {
             trainingIntervalRef.current = null;
         }
         setIsRunning(false);
+        
+        // Reset the actual model
+        const appState = AppState.getInstance();
+        const model = appState.getModel();
+        if (model) {
+            model.reset();
+        }
+        
         setCurrentEpoch(0);
         setEpochs(100); // Reset epochs to default or chosen initial value
         setLearningRate([0.01]);
         setHiddenLayerCount([2]);
         setActivationFunction("relu");
         setTrainingMetricsData(initialMetrics);
+        
+        // Update metrics from reset model
+        updateMetricsFromModel();
     };
 
-    const handleLayerStep = () => console.log("Layer step clicked");
+    const handleLayerStep = () => {
+        const appState = AppState.getInstance();
+        const isFinished = appState.train(); // This calls trainTickLayer
+        
+        // Update metrics after the layer step
+        updateMetricsFromModel();
+        
+        if (isFinished) {
+            console.log("Training completed!");
+        }
+    };
 
     return (
         <TooltipProvider>
@@ -167,11 +224,20 @@ export default function SynapseViewPage() {
 
                     <div className="flex flex-col items-center mx-4 flex-grow min-w-0 px-2">
                         <Progress
-                            value={epochs > 0 ? (currentEpoch / epochs) * 100 : 0}
+                            value={(() => {
+                                const appState = AppState.getInstance();
+                                const model = appState.getModel();
+                                const totalEpochs = model?.total_epochs || epochs;
+                                return totalEpochs > 0 ? (currentEpoch / totalEpochs) * 100 : 0;
+                            })()}
                             className="w-full max-w-md h-2.5"
                         />
                         <span className="text-xs text-muted-foreground mt-1.5">
-                            Epoch: {currentEpoch} / {epochs}
+                            Epoch: {currentEpoch} / {(() => {
+                                const appState = AppState.getInstance();
+                                const model = appState.getModel();
+                                return model?.total_epochs || epochs;
+                            })()}
                         </span>
                     </div>
 
@@ -217,7 +283,12 @@ export default function SynapseViewPage() {
                                     size="icon"
                                     aria-label="Step Forward Epoch"
                                     onClick={handleStep}
-                                    disabled={isRunning || currentEpoch >= epochs}
+                                    disabled={isRunning || (() => {
+                                        const appState = AppState.getInstance();
+                                        const model = appState.getModel();
+                                        const totalEpochs = model?.total_epochs || epochs;
+                                        return currentEpoch >= totalEpochs;
+                                    })()}
                                 >
                                     <StepForward className="h-5 w-5" />
                                 </Button>

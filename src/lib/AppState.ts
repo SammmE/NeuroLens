@@ -120,8 +120,27 @@ export class AppState {
 		}
 	}
 
-	public train(): void {
-		this.model?.train();
+	public train(): boolean {
+		console.log("Training model with current configuration...");
+		let res = this.model?.train_tick();
+		console.log("Training result:", res);
+		return res?.completed ?? false;
+	}
+
+	public pauseTraining(): void {
+		this.model?.pauseTraining();
+	}
+
+	public resumeTraining(): void {
+		this.model?.resumeTraining();
+	}
+
+	public isTrainingPaused(): boolean {
+		return this.model?.isTrainingPaused() ?? false;
+	}
+
+	public isTrainingInProgress(): boolean {
+		return this.model?.isTrainingInProgress() ?? false;
 	}
 
 	public setLearningRate(rate: number): void {
@@ -145,7 +164,7 @@ export class AppState {
 		} else {
 			console.error(
 				"Invalid activation function. Valid options are: " +
-					validFunctions.join(", "),
+				validFunctions.join(", "),
 			);
 		}
 	}

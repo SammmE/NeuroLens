@@ -10,6 +10,31 @@ export class Neuron {
 		this.bias = bias;
 		this.weights = weights;
 	}
+
+	public setOutput(output: number): void {
+		this.output = output;
+	}
+
+	public setInputs(inputs: number[]): void {
+		this.inputs = inputs;
+	}
+
+	public setZ(z: number): void {
+		this.z = z;
+	}
+
+	public setDelta(delta: number): void {
+		this.delta = delta;
+	}
+
+	public setWeights(weights: number[]): void {
+		if (weights.length !== this.weights.length) {
+			throw new Error(
+				`Weights length mismatch: expected ${this.weights.length}, got ${weights.length}`,
+			);
+		}
+		this.weights = weights;
+	}
 }
 
 export type NeuronLayer = Neuron[];
@@ -65,6 +90,17 @@ export class Model {
 	private previousLayerResults: number[] = [];
 	private currentLayerOutputsForStep: number[] = [];
 
+	// Training state for layer-by-layer training
+	private trainingInProgress: boolean = false;
+	private trainingPaused: boolean = false;
+	private currentTrainingEpoch: number = 0;
+	private currentSampleIndex: number = 0;
+	private currentTrainingPhase: 'forward' | 'backward' = 'forward';
+	private epochPredictions: number[][] = [];
+	private epochTargets: number[][] = [];
+	private cumulativeEpochLoss: number = 0;
+	private shuffledTrainingData: Array<{ inputs: number[]; targets: number[] }> = [];
+
 	constructor(
 		layersConfig: number[][],
 		rawData: number[][],
@@ -84,7 +120,7 @@ export class Model {
 		this.outputLayers = outputColumnIndices;
 		this.callbacks = callbacks || [];
 
-        console.log(this.layers)
+		console.log(this.layers)
 
 		if (layersConfig.length === 0) {
 			throw new Error("layersConfig cannot be empty for model creation.");
@@ -151,397 +187,520 @@ export class Model {
 
 		this.resetStepExecutionState();
 		this.notifyCallbacks();
+		this.initializeNeuronOutputs();
 	}
 
 	private notifyCallbacks(): void {
 		this.callbacks.forEach((callback) => callback(this));
 	}
 
-	private resetStepExecutionState(): void {
+	public getLossHistory(): number[] {
+		return this.loss;
+	}
+
+	public getAccuracyHistory(): number[] {
+		return this.accuracy;
+	}
+
+	public getEpochsCompleted(): number {
+		return this.epochs;
+	}
+
+	public reset(): void {
+		this.epochs = 0;
+		this.loss = [];
+		this.accuracy = [];
 		this.onLayer = 0;
 		this.layerProgress = 0;
-		this.currentLayerOutputsForStep = [];
-		this.previousLayerResults = [];
+		this.resetStepExecutionState();
+		this.initializeNeuronOutputs();
+		this.notifyCallbacks();
+	}
 
-		if (
-			this.trainingData.length > 0 &&
-			this.trainingData[0].inputs.length > 0
-		) {
-			this.previousLayerResults = [...this.trainingData[0].inputs];
-		} else if (this.numInputFeatures > 0) {
-			this.previousLayerResults = Array(this.numInputFeatures).fill(0);
-		}
+	/**
+	 * Pauses the training process
+	 */
+	public pauseTraining(): void {
+		this.trainingPaused = true;
+	}
+
+	/**
+	 * Resumes the training process
+	 */
+	public resumeTraining(): void {
+		this.trainingPaused = false;
+	}
+
+	/**
+	 * Checks if training is currently paused
+	 */
+	public isTrainingPaused(): boolean {
+		return this.trainingPaused;
+	}
+
+	/**
+	 * Checks if training is in progress (not completed)
+	 */
+	public isTrainingInProgress(): boolean {
+		return this.trainingInProgress;
 	}
 
 	public getNetwork(): NeuronNetwork {
 		return this.network;
 	}
 
-	public reset(): void {
-		if (!this.layers || this.numInputFeatures === undefined) {
-			console.error(
-				"Cannot reset model: initial configuration (layers, numInputFeatures) not available.",
-			);
-			return;
-		}
-		this.network = createNeuronNetwork(this.layers, this.numInputFeatures);
-		this.epochs = 0;
-		this.loss = [];
-		this.accuracy = [];
-		this.resetStepExecutionState();
-		this.notifyCallbacks();
+	/**
+	 * Gets detailed network state including all neuron properties
+	 * Useful for visualization and debugging
+	 */
+	public getDetailedNetworkState(): {
+		layerIndex: number;
+		neurons: {
+			weights: number[];
+			bias: number;
+			inputs: number[];
+			z: number;
+			output: number;
+			delta: number;
+		}[];
+	}[] {
+		return this.network.map((layer, layerIndex) => ({
+			layerIndex,
+			neurons: layer.map(neuron => ({
+				weights: [...neuron.weights],
+				bias: neuron.bias,
+				inputs: [...neuron.inputs],
+				z: neuron.z,
+				output: neuron.output,
+				delta: neuron.delta
+			}))
+		}));
 	}
 
-	private applyActivation(value: number): number {
+	/**
+	 * Gets the current training progress information
+	 */
+	public getTrainingProgress(): {
+		trainingInProgress: boolean;
+		currentEpoch: number;
+		currentSample: number;
+		currentLayer: number;
+		totalEpochs: number;
+		totalSamples: number;
+		totalLayers: number;
+		phase: 'forward' | 'backward';
+		progressPercentage: number;
+	} {
+		const totalSamples = this.shuffledTrainingData.length || this.trainingData.length;
+		const totalSteps = this.total_epochs * totalSamples * this.network.length * 2; // forward + backward
+		const currentStep = (this.currentTrainingEpoch * totalSamples * this.network.length * 2) +
+			(this.currentSampleIndex * this.network.length * 2) +
+			(this.currentTrainingPhase === 'forward' ? this.onLayer : this.network.length + (this.network.length - 1 - this.onLayer));
+
+		return {
+			trainingInProgress: this.trainingInProgress,
+			currentEpoch: this.currentTrainingEpoch,
+			currentSample: this.currentSampleIndex,
+			currentLayer: this.onLayer,
+			totalEpochs: this.total_epochs,
+			totalSamples,
+			totalLayers: this.network.length,
+			phase: this.currentTrainingPhase,
+			progressPercentage: Math.min(100, (currentStep / totalSteps) * 100)
+		};
+	}
+
+	private resetStepExecutionState(): void {
+		this.trainingInProgress = false;
+		this.trainingPaused = false;
+		this.currentTrainingEpoch = 0;
+		this.currentSampleIndex = 0;
+		this.currentTrainingPhase = 'forward';
+		this.epochPredictions = [];
+		this.epochTargets = [];
+		this.cumulativeEpochLoss = 0;
+		this.shuffledTrainingData = [];
+	}
+
+	private initializeNeuronOutputs(): void {
+		this.network.forEach((layer) => {
+			layer.forEach((neuron) => {
+				neuron.setOutput(0);
+				neuron.setZ(0);
+				neuron.setDelta(0);
+				neuron.setInputs([]);
+			});
+		});
+	}
+
+	/**
+	 * Applies the activation function to a given value
+	 */
+	private applyActivation(z: number): number {
 		switch (this.activationFunction) {
-			case "sigmoid":
-				return 1 / (1 + Math.exp(-value));
 			case "relu":
-				return Math.max(0, value);
+				return Math.max(0, z);
+			case "sigmoid":
+				return 1 / (1 + Math.exp(-z));
 			case "tanh":
-				return Math.tanh(value);
+				return Math.tanh(z);
 			case "linear":
-				return value;
+				return z;
 			default:
-				console.warn(
-					`Unknown activation function: ${this.activationFunction}. Defaulting to linear.`,
-				);
-				return value;
+				throw new Error(`Unsupported activation function: ${this.activationFunction}`);
 		}
 	}
 
-	private applyActivationDerivative(outputValue: number): number {
+	/**
+	 * Performs a forward pass through a single neuron
+	 * @param neuron The neuron to process
+	 * @param inputs The input values to the neuron
+	 * @returns The activated output of the neuron
+	 */
+	public singleNeuronPass(neuron: Neuron, inputs: number[]): number {
+		if (inputs.length !== neuron.weights.length) {
+			throw new Error(
+				`Input size mismatch: neuron expects ${neuron.weights.length} inputs, got ${inputs.length}`
+			);
+		}
+
+		// Store inputs for later use (e.g., in backpropagation)
+		neuron.setInputs([...inputs]);
+
+		// Calculate weighted sum: z = sum(wi * xi) + bias
+		let z = neuron.bias;
+		for (let i = 0; i < inputs.length; i++) {
+			z += neuron.weights[i] * inputs[i];
+		}
+
+		// Store z value
+		neuron.setZ(z);
+
+		// Apply activation function
+		const output = this.applyActivation(z);
+
+		// Store output
+		neuron.setOutput(output);
+
+		return output;
+	}
+
+	/**
+	 * Performs a forward pass through an entire layer
+	 * @param layer The layer to process
+	 * @param inputs The input values to the layer
+	 * @returns Array of outputs from all neurons in the layer
+	 */
+	public layerPass(layer: NeuronLayer, inputs: number[]): number[] {
+		const outputs: number[] = [];
+
+		for (const neuron of layer) {
+			const output = this.singleNeuronPass(neuron, inputs);
+			outputs.push(output);
+		}
+
+		return outputs;
+	}
+
+	/**
+	 * Performs a forward pass through the entire network
+	 * @param inputs The input values to the network
+	 * @returns Array of outputs from the final layer
+	 */
+	public forwardPass(inputs: number[]): number[] {
+		if (inputs.length !== this.numInputFeatures) {
+			throw new Error(
+				`Input size mismatch: network expects ${this.numInputFeatures} inputs, got ${inputs.length}`
+			);
+		}
+
+		let currentInputs = inputs;
+
+		// Process each layer sequentially
+		for (let i = 0; i < this.network.length; i++) {
+			const layer = this.network[i];
+			currentInputs = this.layerPass(layer, currentInputs);
+		}
+
+		return currentInputs;
+	}
+
+	/**
+	 * Calculates the derivative of the activation function
+	 */
+	private activationDerivative(z: number): number {
 		switch (this.activationFunction) {
-			case "sigmoid":
-				return outputValue * (1 - outputValue);
 			case "relu":
-				return outputValue > 0 ? 1 : 0;
+				return z > 0 ? 1 : 0;
+			case "sigmoid":
+				const sigmoid = 1 / (1 + Math.exp(-z));
+				return sigmoid * (1 - sigmoid);
 			case "tanh":
-				return 1 - Math.pow(outputValue, 2);
+				const tanh = Math.tanh(z);
+				return 1 - tanh * tanh;
 			case "linear":
 				return 1;
 			default:
-				return 1;
+				throw new Error(`Unsupported activation function: ${this.activationFunction}`);
 		}
 	}
 
-	public forwardPass(inputSample: number[]): number[] {
-		if (inputSample.length !== this.numInputFeatures) {
-			throw new Error(
-				`Input sample size ${inputSample.length} does not match model's expected input features ${this.numInputFeatures}`,
-			);
+	/**
+	 * Calculates mean squared error loss
+	 */
+	private calculateLoss(predictions: number[], targets: number[]): number {
+		let sum = 0;
+		for (let i = 0; i < predictions.length; i++) {
+			const diff = predictions[i] - targets[i];
+			sum += diff * diff;
 		}
-
-		let currentLayerInputs = [...inputSample];
-
-		for (const layer of this.network) {
-			const currentLayerOutputs: number[] = [];
-			for (const neuron of layer) {
-				neuron.inputs = [...currentLayerInputs];
-
-				let z = neuron.bias;
-				for (let i = 0; i < neuron.weights.length; i++) {
-					z += neuron.weights[i] * currentLayerInputs[i];
-				}
-				neuron.z = z;
-				neuron.output = this.applyActivation(neuron.z);
-				currentLayerOutputs.push(neuron.output);
-			}
-			currentLayerInputs = currentLayerOutputs;
-		}
-		return currentLayerInputs;
+		return sum / (2 * predictions.length);
 	}
 
-	public backwardPass(targetOutputs: number[]): void {
-		if (targetOutputs.length !== this.numOutputFeatures) {
-			throw new Error(
-				`Target outputs size ${targetOutputs.length} does not match model's output features ${this.numOutputFeatures}`,
-			);
+	/**
+	 * Calculates accuracy for classification (assumes binary classification with threshold 0.5)
+	 */
+	private calculateAccuracy(predictions: number[], targets: number[]): number {
+		let correct = 0;
+		for (let i = 0; i < predictions.length; i++) {
+			const predicted = predictions[i] > 0.5 ? 1 : 0;
+			const actual = targets[i] > 0.5 ? 1 : 0;
+			if (predicted === actual) correct++;
 		}
+		return correct / predictions.length;
+	}
 
-		const outputLayer = this.network[this.network.length - 1];
-		for (let j = 0; j < outputLayer.length; j++) {
-			const neuron = outputLayer[j];
-			const error = targetOutputs[j] - neuron.output;
-			neuron.delta = error * this.applyActivationDerivative(neuron.output);
-		}
-
-		for (let layerIdx = this.network.length - 2; layerIdx >= 0; layerIdx--) {
-			const currentHiddenLayer = this.network[layerIdx];
-			const nextLayer = this.network[layerIdx + 1];
-			for (let i = 0; i < currentHiddenLayer.length; i++) {
-				const neuron = currentHiddenLayer[i];
-				let sumOfWeightedDeltas = 0;
-				for (const nextLayerNeuron of nextLayer) {
-					sumOfWeightedDeltas +=
-						nextLayerNeuron.weights[i] * nextLayerNeuron.delta;
-				}
-				neuron.delta =
-					sumOfWeightedDeltas * this.applyActivationDerivative(neuron.output);
-			}
-		}
-
-		for (let layerIdx = 0; layerIdx < this.network.length; layerIdx++) {
-			const currentLayer = this.network[layerIdx];
-			for (const neuron of currentLayer) {
-				for (let k = 0; k < neuron.weights.length; k++) {
-					neuron.weights[k] +=
-						this.learningRate * neuron.delta * neuron.inputs[k];
-				}
-				neuron.bias += this.learningRate * neuron.delta;
-			}
+	/**
+	 * Shuffles the training data for the current epoch
+	 */
+	private shuffleTrainingData(): void {
+		this.shuffledTrainingData = [...this.trainingData];
+		for (let i = this.shuffledTrainingData.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[this.shuffledTrainingData[i], this.shuffledTrainingData[j]] =
+				[this.shuffledTrainingData[j], this.shuffledTrainingData[i]];
 		}
 	}
 
-	public calculateLoss(predicted: number[], actual: number[]): number {
-		if (predicted.length !== actual.length) {
-			console.error(
-				"Predicted and actual arrays must have the same length for loss calculation.",
-			);
-			return Infinity;
+	/**
+	 * Training function that progresses layer by layer on each call
+	 * Performs forward pass layer by layer, then backpropagation and weight updates
+	 * @returns Object containing training state information
+	 */
+	public train_tick(): {
+		completed: boolean;
+		paused: boolean;
+		currentEpoch: number;
+		currentSample: number;
+		currentLayer: number;
+		phase: 'forward' | 'backward' | 'epoch_complete';
+		loss?: number;
+		accuracy?: number;
+	} {
+		// Check if training is paused
+		if (this.trainingPaused) {
+			return {
+				completed: false,
+				paused: true,
+				currentEpoch: this.currentTrainingEpoch,
+				currentSample: this.currentSampleIndex,
+				currentLayer: this.onLayer,
+				phase: this.currentTrainingPhase
+			};
 		}
-		if (predicted.length === 0) return 0;
-		const sumSquaredError = predicted.reduce(
-			(sum, p, i) => sum + Math.pow(p - actual[i], 2),
-			0,
-		);
-		return sumSquaredError / predicted.length;
-	}
 
-	public calculateEpochAccuracy(
-		allPredictedOutputs: number[][],
-		allActualTargets: number[][],
-	): number {
-		if (
-			allPredictedOutputs.length === 0 ||
-			allPredictedOutputs.length !== allActualTargets.length
-		) {
-			return 0;
-		}
-		let correctSamples = 0;
-		const tolerance = 0.1;
-
-		for (let i = 0; i < allPredictedOutputs.length; i++) {
-			const predictedSample = allPredictedOutputs[i];
-			const actualSample = allActualTargets[i];
-			if (predictedSample.length !== actualSample.length) continue;
-
-			let isSampleCorrect = true;
-			for (let j = 0; j < predictedSample.length; j++) {
-				if (Math.abs(predictedSample[j] - actualSample[j]) > tolerance) {
-					isSampleCorrect = false;
-					break;
-				}
+		// Initialize training if not started
+		if (!this.trainingInProgress) {
+			if (this.trainingData.length === 0) {
+				throw new Error("No training data available");
 			}
-			if (isSampleCorrect) {
-				correctSamples++;
+			this.trainingInProgress = true;
+			this.trainingPaused = false;
+			this.currentTrainingEpoch = 0;
+			this.currentSampleIndex = 0;
+			this.currentTrainingPhase = 'forward';
+			this.onLayer = 0;
+			this.epochPredictions = [];
+			this.epochTargets = [];
+			this.cumulativeEpochLoss = 0;
+			this.shuffleTrainingData();
+		}
+
+		// Check if training is complete
+		if (this.currentTrainingEpoch >= this.total_epochs) {
+			this.trainingInProgress = false;
+			return {
+				completed: true,
+				paused: false,
+				currentEpoch: this.currentTrainingEpoch,
+				currentSample: this.currentSampleIndex,
+				currentLayer: this.onLayer,
+				phase: 'epoch_complete'
+			};
+		}
+
+		const currentSample = this.shuffledTrainingData[this.currentSampleIndex];
+
+		// Forward pass phase - process layer by layer
+		if (this.currentTrainingPhase === 'forward') {
+			if (this.onLayer === 0) {
+				// First layer - use input data
+				this.previousLayerResults = currentSample.inputs;
 			}
-		}
-		return correctSamples / allPredictedOutputs.length;
-	}
 
-	public async trainEpoch(): Promise<{
-		epochLoss: number;
-		epochAccuracy: number;
-	}> {
-		if (this.trainingData.length === 0) {
-			console.warn("No training data available. Skipping epoch.");
-			return { epochLoss: 0, epochAccuracy: 0 };
-		}
+			// Process current layer
+			const currentLayer = this.network[this.onLayer];
+			this.currentLayerOutputsForStep = this.layerPass(currentLayer, this.previousLayerResults);
 
-		let cumulativeEpochLoss = 0;
-		const epochPredictions: number[][] = [];
-		const epochTargets: number[][] = [];
+			// Move to next layer
+			this.onLayer++;
+			this.previousLayerResults = [...this.currentLayerOutputsForStep];
 
-		const shuffledTrainingData = [...this.trainingData].sort(
-			() => Math.random() - 0.5,
-		);
-
-		for (const sample of shuffledTrainingData) {
-			const predictedOutputs = this.forwardPass(sample.inputs);
-			this.backwardPass(sample.targets);
-
-			cumulativeEpochLoss += this.calculateLoss(
-				predictedOutputs,
-				sample.targets,
-			);
-			epochPredictions.push(predictedOutputs);
-			epochTargets.push(sample.targets);
-		}
-
-		const averageEpochLoss = cumulativeEpochLoss / this.trainingData.length;
-		const epochAccuracy = this.calculateEpochAccuracy(
-			epochPredictions,
-			epochTargets,
-		);
-
-		return { epochLoss: averageEpochLoss, epochAccuracy };
-	}
-
-	public async train(
-		onEpochComplete?: (epoch: number, loss: number, accuracy: number) => void,
-	): Promise<void> {
-		console.log(`Starting training for ${this.total_epochs} epochs.`);
-		this.loss = [];
-		this.accuracy = [];
-		this.epochs = 0;
-
-		for (let i = 0; i < this.total_epochs; i++) {
-			const { epochLoss, epochAccuracy } = await this.trainEpoch();
-
-			this.epochs++;
-			this.loss.push(epochLoss);
-			this.accuracy.push(epochAccuracy);
-
-			console.log(
-				`Epoch ${this.epochs}/${this.total_epochs} - Loss: ${epochLoss.toFixed(4)}, Accuracy: ${epochAccuracy.toFixed(4)}`,
-			);
-
-			if (onEpochComplete) {
-				onEpochComplete(this.epochs, epochLoss, epochAccuracy);
-			}
+			// Notify callbacks after each layer forward pass
 			this.notifyCallbacks();
-		}
-		console.log("Training completed.");
-	}
 
-	public getEpochsCompleted(): number {
-		return this.epochs;
-	}
-	public getLossHistory(): number[] {
-		return this.loss;
-	}
-	public getAccuracyHistory(): number[] {
-		return this.accuracy;
-	}
+			// Check if forward pass is complete
+			if (this.onLayer >= this.network.length) {
+				// Store predictions for epoch-level metrics
+				this.epochPredictions.push([...this.currentLayerOutputsForStep]);
+				this.epochTargets.push([...currentSample.targets]);
 
-	private handleEpochCompletionForStepMode(): void {
-		this.epochs++;
-		this.resetStepExecutionState();
-	}
+				// Calculate loss for this sample
+				const sampleLoss = this.calculateLoss(this.currentLayerOutputsForStep, currentSample.targets);
+				this.cumulativeEpochLoss += sampleLoss;
 
-	public fwdNeuron(): void {
-		if (this.onLayer >= this.network.length) {
-			this.handleEpochCompletionForStepMode();
-			this.notifyCallbacks();
-			return;
-		}
-
-		const currentLayer = this.network[this.onLayer];
-		if (this.layerProgress < currentLayer.length) {
-			const neuron = currentLayer[this.layerProgress];
-
-			if (this.previousLayerResults.length !== neuron.weights.length) {
-				console.error(
-					`fwdNeuron: Input mismatch for L${this.onLayer}N${this.layerProgress}. Expected ${neuron.weights.length} inputs, got ${this.previousLayerResults.length}. Resetting step state.`,
-				);
-				this.resetStepExecutionState();
-				this.notifyCallbacks();
-				return;
+				// Switch to backward phase
+				this.currentTrainingPhase = 'backward';
+				this.onLayer = this.network.length - 1; // Start from last layer
 			}
 
-			neuron.inputs = [...this.previousLayerResults];
-			neuron.z =
-				neuron.weights.reduce(
-					(sum, weight, i) => sum + weight * neuron.inputs[i],
-					0,
-				) + neuron.bias;
-			neuron.output = this.applyActivation(neuron.z);
+			return {
+				completed: false,
+				paused: false,
+				currentEpoch: this.currentTrainingEpoch,
+				currentSample: this.currentSampleIndex,
+				currentLayer: this.onLayer - 1,
+				phase: 'forward'
+			};
+		}
 
-			this.currentLayerOutputsForStep.push(neuron.output);
-			this.layerProgress++;
+		// Backward pass phase - backpropagation layer by layer
+		if (this.currentTrainingPhase === 'backward') {
+			const currentLayer = this.network[this.onLayer];
 
-			if (this.layerProgress >= currentLayer.length) {
-				this.onLayer++;
-				this.layerProgress = 0;
-				this.previousLayerResults = [...this.currentLayerOutputsForStep];
-				this.currentLayerOutputsForStep = [];
-			}
-		} else {
-			if (this.onLayer < this.network.length) {
-				this.onLayer++;
-				this.layerProgress = 0;
-				this.previousLayerResults = [...this.currentLayerOutputsForStep];
-				this.currentLayerOutputsForStep = [];
+			if (this.onLayer === this.network.length - 1) {
+				// Output layer - calculate deltas using output error
+				for (let i = 0; i < currentLayer.length; i++) {
+					const neuron = currentLayer[i];
+					const error = neuron.output - currentSample.targets[i];
+					const derivative = this.activationDerivative(neuron.z);
+					neuron.setDelta(error * derivative);
+				}
 			} else {
-				this.handleEpochCompletionForStepMode();
+				// Hidden layer - calculate deltas using next layer's deltas
+				const nextLayer = this.network[this.onLayer + 1];
+				for (let i = 0; i < currentLayer.length; i++) {
+					const neuron = currentLayer[i];
+					let error = 0;
+
+					// Sum weighted deltas from next layer
+					for (let j = 0; j < nextLayer.length; j++) {
+						error += nextLayer[j].delta * nextLayer[j].weights[i];
+					}
+
+					const derivative = this.activationDerivative(neuron.z);
+					neuron.setDelta(error * derivative);
+				}
 			}
-		}
-		this.notifyCallbacks();
-	}
 
-	public fwdLayer(): void {
-		if (this.onLayer >= this.network.length) {
-			this.handleEpochCompletionForStepMode();
-			this.notifyCallbacks();
-			return;
-		}
+			// Update weights and biases for current layer
+			for (const neuron of currentLayer) {
+				// Store old weights for potential debugging/visualization
+				const oldWeights = [...neuron.weights];
+				const oldBias = neuron.bias;
 
-		const currentLayer = this.network[this.onLayer];
+				// Update weights using gradient descent
+				for (let i = 0; i < neuron.weights.length; i++) {
+					neuron.weights[i] -= this.learningRate * neuron.delta * neuron.inputs[i];
+				}
+				// Update bias using gradient descent
+				neuron.bias -= this.learningRate * neuron.delta;
 
-		if (
-			this.onLayer === 0 &&
-			this.previousLayerResults.length !== this.numInputFeatures
-		) {
-			console.warn(
-				`fwdLayer: Initial inputs for layer 0 might be incorrect. Expected ${this.numInputFeatures}, got ${this.previousLayerResults.length}. Attempting to use first training sample.`,
-			);
-			this.resetStepExecutionState();
-		}
-		if (
-			this.onLayer > 0 &&
-			this.previousLayerResults.length !== this.network[this.onLayer - 1].length
-		) {
-			console.error(
-				`fwdLayer: Input mismatch for L${this.onLayer}. Expected ${this.network[this.onLayer - 1].length} inputs from previous layer, got ${this.previousLayerResults.length}. Resetting step state.`,
-			);
-			this.resetStepExecutionState();
-			this.notifyCallbacks();
-			return;
-		}
-
-		this.currentLayerOutputsForStep = [];
-		for (
-			let neuronIndex = 0;
-			neuronIndex < currentLayer.length;
-			neuronIndex++
-		) {
-			const neuron = currentLayer[neuronIndex];
-			if (this.previousLayerResults.length !== neuron.weights.length) {
-				console.error(
-					`fwdLayer: Input mismatch for neuron L${this.onLayer}N${neuronIndex}. Expected ${neuron.weights.length} inputs, got ${this.previousLayerResults.length}. Halting layer.`,
-				);
-				this.resetStepExecutionState();
-				this.notifyCallbacks();
-				return;
+				// Ensure weights array is properly updated (force array reference update)
+				neuron.setWeights([...neuron.weights]);
 			}
-			neuron.inputs = [...this.previousLayerResults];
-			neuron.z =
-				neuron.weights.reduce(
-					(sum, weight, idx) => sum + weight * neuron.inputs[idx],
-					0,
-				) + neuron.bias;
-			neuron.output = this.applyActivation(neuron.z);
-			this.currentLayerOutputsForStep.push(neuron.output);
+
+			// Move to previous layer
+			this.onLayer--;
+
+			// Notify callbacks after each layer update during backpropagation
+			this.notifyCallbacks();
+
+			// Check if backward pass is complete
+			if (this.onLayer < 0) {
+				// Reset neuron outputs for next sample
+				this.initializeNeuronOutputs();
+
+				// Move to next sample
+				this.currentSampleIndex++;
+				this.onLayer = 0;
+				this.currentTrainingPhase = 'forward';
+
+				// Check if epoch is complete
+				if (this.currentSampleIndex >= this.shuffledTrainingData.length) {
+					// Calculate epoch metrics
+					const epochLoss = this.cumulativeEpochLoss / this.shuffledTrainingData.length;
+
+					// Calculate epoch accuracy
+					let totalAccuracy = 0;
+					for (let i = 0; i < this.epochPredictions.length; i++) {
+						totalAccuracy += this.calculateAccuracy(this.epochPredictions[i], this.epochTargets[i]);
+					}
+					const epochAccuracy = totalAccuracy / this.epochPredictions.length;
+
+					// Store metrics
+					this.loss.push(epochLoss);
+					this.accuracy.push(epochAccuracy);
+					this.epochs++;
+
+					// Reset for next epoch
+					this.currentSampleIndex = 0;
+					this.currentTrainingEpoch++;
+					this.epochPredictions = [];
+					this.epochTargets = [];
+					this.cumulativeEpochLoss = 0;
+
+					if (this.currentTrainingEpoch < this.total_epochs) {
+						this.shuffleTrainingData();
+					}
+
+					// Notify callbacks
+					this.notifyCallbacks();
+
+					return {
+						completed: false,
+						paused: false,
+						currentEpoch: this.currentTrainingEpoch - 1,
+						currentSample: this.currentSampleIndex,
+						currentLayer: this.onLayer,
+						phase: 'epoch_complete',
+						loss: epochLoss,
+						accuracy: epochAccuracy
+					};
+				}
+			}
+
+			return {
+				completed: false,
+				paused: false,
+				currentEpoch: this.currentTrainingEpoch,
+				currentSample: this.currentSampleIndex,
+				currentLayer: this.onLayer + 1,
+				phase: 'backward'
+			};
 		}
 
-		this.previousLayerResults = [...this.currentLayerOutputsForStep];
-		this.currentLayerOutputsForStep = [];
-
-		this.onLayer++;
-		this.layerProgress = 0;
-
-		if (this.onLayer >= this.network.length) {
-			this.handleEpochCompletionForStepMode();
-		}
-
-		this.notifyCallbacks();
-	}
-
-	private getNeuronsInLayer(layerIndex: number): number {
-		if (layerIndex < 0 || layerIndex >= this.network.length) {
-			throw new Error("Layer index out of bounds");
-		}
-		return this.network[layerIndex].length;
+		// Should not reach here
+		throw new Error("Invalid training state");
 	}
 }
