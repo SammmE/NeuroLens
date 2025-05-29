@@ -1,13 +1,12 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { Play, Pause, StepForward, Layers, RotateCcw } from "lucide-react";
@@ -148,8 +147,7 @@ export default function SynapseViewPage() {
     setTrainingMetricsData(initialMetrics);
   };
 
-  const handleLayerStep = () => console.log("Layer step clicked");
-
+	const handleLayerStep = () => console.log("Layer step clicked");
 
   return (
     <TooltipProvider>
@@ -200,16 +198,21 @@ export default function SynapseViewPage() {
               </TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Step Through Layers" onClick={handleLayerStep}>
-                  <Layers className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Step Through Layers</p>
-              </TooltipContent>
-            </Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									aria-label="Step Through Layers"
+									onClick={handleLayerStep}
+								>
+									<Layers className="h-5 w-5" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>Step Through Layers</p>
+							</TooltipContent>
+						</Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>

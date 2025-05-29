@@ -8,10 +8,10 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Expand } from "lucide-react";
 
 const LegendItem = ({ color, label }: { color: string; label: string }) => (
-  <div className="flex items-center space-x-2">
-    <span className={`h-3 w-3 rounded-full ${color}`}></span>
-    <span className="text-sm text-muted-foreground">{label}</span>
-  </div>
+    <div className="flex items-center space-x-2">
+        <span className={`h-3 w-3 rounded-full ${color}`}></span>
+        <span className="text-sm text-muted-foreground">{label}</span>
+    </div>
 );
 
 const NeuralNetworkContent = ({ isModal = false }: { isModal?: boolean }) => {

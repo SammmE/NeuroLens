@@ -12,14 +12,14 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Expand } from "lucide-react";
 
 const chartConfig = {
-  loss: {
-    label: "Loss",
-    color: "hsl(var(--chart-1))",
-  },
-  accuracy: {
-    label: "Accuracy",
-    color: "hsl(var(--chart-2))",
-  },
+    loss: {
+        label: "Loss",
+        color: "hsl(var(--chart-1))",
+    },
+    accuracy: {
+        label: "Accuracy",
+        color: "hsl(var(--chart-2))",
+    },
 } satisfies ChartConfig;
 
 interface TrainingMetricsPanelProps {

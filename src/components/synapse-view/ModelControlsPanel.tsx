@@ -1,5 +1,4 @@
-
-"use client"
+"use client";
 
 import React from 'react';
 import type { MetricPoint, ModelControlsPanelProps as PageModelControlsPanelProps } from '@/app/page'; // Import the props from page
@@ -7,7 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, StepForward, RotateCcwIcon, Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
