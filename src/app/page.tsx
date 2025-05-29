@@ -23,6 +23,26 @@ export type MetricPoint = {
   accuracy: number;
 };
 
+// Props for ModelControlsPanel, including trainingMetricsData
+export interface ModelControlsPanelProps {
+  epochs: number;
+  setEpochs: (value: number | ((prev: number) => number)) => void;
+  currentEpoch: number;
+  learningRate: number[];
+  setLearningRate: (value: number[] | ((prev: number[]) => number[])) => void;
+  hiddenLayerCount: number[];
+  setHiddenLayerCount: (value: number[] | ((prev: number[]) => number[])) => void;
+  activationFunction: string;
+  setActivationFunction: (value: string | ((prev: string) => string)) => void;
+  isRunning: boolean;
+  onPlay: () => void;
+  onPause: () => void;
+  onStep: () => void;
+  onReset: () => void;
+  trainingMetricsData: MetricPoint[]; // Added this prop
+}
+
+
 const initialMetrics: MetricPoint[] = [{ time: 0, loss: 1.0, accuracy: 0.10 }];
 
 export default function SynapseViewPage() {
@@ -40,18 +60,15 @@ export default function SynapseViewPage() {
     setTrainingMetricsData(prevMetrics => {
       const lastPoint = prevMetrics[prevMetrics.length - 1] || { loss: 1.0, accuracy: 0.1 };
       
-      // Simulate plausible trends with some randomness
-      const lossChangeFactor = 0.90 - Math.random() * 0.1; // avg 0.85, range 0.8-0.9
+      const lossChangeFactor = 0.90 - Math.random() * 0.1; 
       let newLoss = lastPoint.loss * lossChangeFactor;
       
-      const accuracyGainFactor = 0.02 + Math.random() * 0.08; // avg 0.06, range 0.02-0.1
+      const accuracyGainFactor = 0.02 + Math.random() * 0.08; 
       let newAccuracy = lastPoint.accuracy + (1 - lastPoint.accuracy) * accuracyGainFactor;
 
-      // Add minor random fluctuations
-      newLoss *= (1 + (Math.random() - 0.5) * 0.05); // +/- 2.5%
-      newAccuracy *= (1 + (Math.random() - 0.5) * 0.05); // +/- 2.5%
+      newLoss *= (1 + (Math.random() - 0.5) * 0.05); 
+      newAccuracy *= (1 + (Math.random() - 0.5) * 0.05);
       
-      // Clamp and format
       newLoss = parseFloat(Math.max(0.001, newLoss).toFixed(4));
       newAccuracy = parseFloat(Math.min(0.999, Math.max(0, newAccuracy)).toFixed(4));
 
@@ -82,7 +99,7 @@ export default function SynapseViewPage() {
           }
           return newEpochValue;
         });
-      }, 500); // Update every 500ms
+      }, 500); 
     }
 
     return () => {
@@ -95,21 +112,18 @@ export default function SynapseViewPage() {
 
 
   const handlePlay = () => {
-    setIsRunning(true);
-    console.log("Set to RUNNING");
-    if (currentEpoch >= epochs && epochs > 0) { // If already at end, reset to play again
+    if (currentEpoch >= epochs && epochs > 0) { 
         setCurrentEpoch(0);
         setTrainingMetricsData(initialMetrics);
     }
+    setIsRunning(true);
   };
 
   const handlePause = () => {
     setIsRunning(false);
-    console.log("Set to PAUSED");
   };
 
   const handleStep = () => {
-    console.log("Step clicked");
     if (currentEpoch < epochs && !isRunning) {
       const newEpochValue = currentEpoch + 1;
       setCurrentEpoch(newEpochValue);
@@ -117,20 +131,20 @@ export default function SynapseViewPage() {
       if (newEpochValue >= epochs) {
         setIsRunning(false);
       }
-    } else if (isRunning) {
-      console.log("Pause training before stepping manually.");
-      // Optionally, you could use a toast notification here
     }
   };
   
   const handleReset = () => {
-    console.log("Reset clicked");
     if (trainingIntervalRef.current) {
       clearInterval(trainingIntervalRef.current);
       trainingIntervalRef.current = null;
     }
     setIsRunning(false);
     setCurrentEpoch(0);
+    setEpochs(100); // Reset epochs to default or chosen initial value
+    setLearningRate([0.01]);
+    setHiddenLayerCount([2]);
+    setActivationFunction("relu");
     setTrainingMetricsData(initialMetrics);
   };
 
@@ -177,7 +191,7 @@ export default function SynapseViewPage() {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Step Forward Epoch" onClick={handleStep} disabled={isRunning}>
+                <Button variant="ghost" size="icon" aria-label="Step Forward Epoch" onClick={handleStep} disabled={isRunning || currentEpoch >= epochs}>
                   <StepForward className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
@@ -230,6 +244,7 @@ export default function SynapseViewPage() {
               onPause={handlePause}
               onStep={handleStep}
               onReset={handleReset}
+              trainingMetricsData={trainingMetricsData} // Pass trainingMetricsData
             />
           </div>
         </main>
