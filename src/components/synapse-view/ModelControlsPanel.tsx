@@ -61,7 +61,7 @@ const ModelControlsInnerContent = ({
             setEpochs(1); // Or some other default/minimum
             AppState.getInstance().setTotalEpochs(1);
         } else {
-            const num = parseInt(value, 4);
+            const num = Number.parseInt(value);
             if (!Number.isNaN(num)) {
                 const clampedNum = Math.min(Math.max(num, 1), 10000);
                 setEpochs(clampedNum);
@@ -77,7 +77,7 @@ const ModelControlsInnerContent = ({
 
     const handleNeuronCountChange = (index: number, value: string) => {
         // Ensure the value is a valid number and within bounds
-        const numValue = parseInt(value, 10);
+        const numValue = Number.parseInt(value, 10);
         if (!Number.isNaN(numValue) && numValue > 0) {
             const newNeuronCounts = [...neuronCounts];
             newNeuronCounts[index] = numValue;

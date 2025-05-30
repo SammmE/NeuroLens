@@ -35,6 +35,8 @@ import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import App from "next/app";
+import { loadSin } from "@/data/sin";
+import { loadDailyTemp } from "@/data/dailyTemp";
 
 const TrainingDataInnerContent = ({
     isModal = false,
@@ -138,28 +140,11 @@ const TrainingDataInnerContent = ({
                         </Label>
                         <Select defaultValue="spirals" onValueChange={(value) => {
                             console.log("Loading dataset:", value);
-                            AppState.getInstance().loadCSV(`x,y
-0.0,0.0
-0.3306939635357677,0.32469946920468346
-0.6613879270715354,0.6142127126896678
-0.9920818906073031,0.8371664782625285
-1.3227758541430708,0.9694002659393304
-1.6534698176788385,0.9965844930066698
-1.9841637812146062,0.9157733266550574
-2.3148577447503738,0.7357239106731318
-2.6455517082861415,0.4759473930370737
-2.9762456718219092,0.16459459028073403
-3.306939635357677,-0.16459459028073378
-3.6376335988934443,-0.4759473930370731
-3.9683275624292125,-0.7357239106731316
-4.299021525964981,-0.9157733266550576
-4.6297154895007475,-0.9965844930066698
-4.960409453036515,-0.9694002659393305
-5.291103416572283,-0.8371664782625288
-5.621797380108052,-0.6142127126896674
-5.9524913436438185,-0.32469946920468373
-6.283185307179586,-2.4492935982947064e-16
-`);
+                            if (value === "sin") {
+                                loadSin();
+                            } else if (value === "dailytemp") {
+                                loadDailyTemp();
+                            }
                         }}>
                             <SelectTrigger
                                 id={`preset-dataset-${isModal ? "modal" : "card"}`}
@@ -167,6 +152,7 @@ const TrainingDataInnerContent = ({
                                 <SelectValue placeholder="Select dataset" />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="sin">Sin Wave</SelectItem>
                                 <SelectItem value="dailytemp">Minimum Daily Temperatures Dataset</SelectItem>
                             </SelectContent>
                         </Select>
@@ -195,7 +181,7 @@ const TrainingDataInnerContent = ({
                                                 className="text-sm font-normal cursor-pointer"
                                                 title={colName}
                                             >
-                                                {colName.length > 15 ? colName.substring(0, 12) + "..." : colName} ({columnIO[index] ? "Input" : "Output"})
+                                                {colName.length > 15 ? `${colName.substring(0, 12)}...` : colName} ({columnIO[index] ? "Input" : "Output"})
                                             </Label>
                                         </div>
                                     ))}
