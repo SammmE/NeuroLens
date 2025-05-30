@@ -9,6 +9,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import { Play, Pause, StepForward, Layers, RotateCcw } from "lucide-react";
 
 import NeuralNetworkPanel from "@/components/synapse-view/NeuralNetworkPanel";
@@ -55,6 +56,7 @@ export default function SynapseViewPage() {
     const [isRunning, setIsRunning] = useState(false);
     const [trainingMetricsData, setTrainingMetricsData] =
         useState<MetricPoint[]>(initialMetrics);
+    const [waitInterval, setWaitInterval] = useState(300); // Default wait interval
 
     const trainingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -135,7 +137,7 @@ export default function SynapseViewPage() {
 
                 // Update metrics after each training step
                 updateMetricsFromModel();
-            }, 300); // Faster interval for more responsive updates
+            }, waitInterval); // Use the dynamic wait interval
         }
 
         return () => {
@@ -144,7 +146,7 @@ export default function SynapseViewPage() {
                 trainingIntervalRef.current = null;
             }
         };
-    }, [isRunning, updateMetricsFromModel]);
+    }, [isRunning, updateMetricsFromModel, waitInterval]);
 
     const handlePlay = () => {
         const appState = AppState.getInstance();
@@ -241,7 +243,33 @@ export default function SynapseViewPage() {
                         </span>
                     </div>
 
-                    <div className="flex items-center space-x-1 px-2">
+                    <div className="flex items-center space-x-3 px-2">
+                        {/* Wait Interval Slider */}
+                        <div className="flex items-center space-x-2 min-w-0">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                        Speed
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Training Speed (lower = faster, higher = slower)</p>
+                                </TooltipContent>
+                            </Tooltip>
+                            <Slider
+                                value={[waitInterval]}
+                                onValueChange={(value) => setWaitInterval(value[0])}
+                                min={0}
+                                max={1000}
+                                step={50}
+                                className="w-20"
+                            />
+                            <span className="text-xs text-muted-foreground min-w-[2rem] text-right">
+                                {waitInterval}ms
+                            </span>
+                        </div>
+
+                        <div className="flex items-center space-x-1">
                         {isRunning ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -329,6 +357,7 @@ export default function SynapseViewPage() {
                                 <p>Reset Model</p>
                             </TooltipContent>
                         </Tooltip>
+                        </div>
                     </div>
                 </nav>
 
